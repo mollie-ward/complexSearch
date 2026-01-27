@@ -149,7 +149,7 @@ public class VehicleRetrievalService : IVehicleRetrievalService
             Price = (decimal)doc.Price,
             Mileage = doc.Mileage,
             BodyType = doc.BodyType,
-            EngineSize = (decimal?)doc.EngineSize ?? 0,
+            EngineSize = doc.EngineSize.HasValue ? (decimal)doc.EngineSize.Value : 0m,
             FuelType = doc.FuelType,
             TransmissionType = doc.TransmissionType,
             Colour = doc.Colour,

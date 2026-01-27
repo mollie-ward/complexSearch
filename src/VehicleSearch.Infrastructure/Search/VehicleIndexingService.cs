@@ -106,9 +106,8 @@ public class VehicleIndexingService : IVehicleIndexingService
 
             // Upload documents to search index in batches
             const int uploadBatchSize = 1000;
-            var batches = documents.Chunk(uploadBatchSize).ToList();
-
-            foreach (var batch in batches)
+            
+            foreach (var batch in documents.Chunk(uploadBatchSize))
             {
                 try
                 {
@@ -125,10 +124,11 @@ public class VehicleIndexingService : IVehicleIndexingService
                         else
                         {
                             result.Failed++;
+                            var errorMessage = SanitizeErrorMessage(indexResult.ErrorMessage ?? "Unknown error");
                             result.Errors.Add(new IndexingError
                             {
                                 VehicleId = indexResult.Key,
-                                Message = indexResult.ErrorMessage ?? "Unknown error",
+                                Message = errorMessage,
                                 Timestamp = DateTime.UtcNow
                             });
                             _logger.LogError("Failed to index vehicle {VehicleId}: {Error}",
@@ -139,13 +139,14 @@ public class VehicleIndexingService : IVehicleIndexingService
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error uploading batch to search index");
+                    var sanitizedMessage = SanitizeErrorMessage(ex.Message);
                     result.Failed += batch.Length;
                     foreach (var doc in batch)
                     {
                         result.Errors.Add(new IndexingError
                         {
                             VehicleId = doc.Id,
-                            Message = ex.Message,
+                            Message = sanitizedMessage,
                             ExceptionType = ex.GetType().Name,
                             Timestamp = DateTime.UtcNow
                         });
@@ -270,5 +271,27 @@ public class VehicleIndexingService : IVehicleIndexingService
             DescriptionVector = embedding,
             ProcessedDate = new DateTimeOffset(vehicle.ProcessedDate)
         };
+    }
+
+    /// <summary>
+    /// Sanitizes error messages to prevent leaking sensitive information.
+    /// </summary>
+    private static string SanitizeErrorMessage(string errorMessage)
+    {
+        // Remove potential connection strings, URLs, or other sensitive data
+        if (string.IsNullOrWhiteSpace(errorMessage))
+        {
+            return "An error occurred during indexing";
+        }
+
+        // If the message contains authentication or connection info, use generic message
+        if (errorMessage.Contains("AccountKey", StringComparison.OrdinalIgnoreCase) ||
+            errorMessage.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase) ||
+            errorMessage.Contains("password", StringComparison.OrdinalIgnoreCase))
+        {
+            return "An error occurred during indexing. Check logs for details.";
+        }
+
+        return errorMessage;
     }
 }

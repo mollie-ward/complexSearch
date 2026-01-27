@@ -193,8 +193,15 @@ public static class KnowledgeBaseEndpoints
             try
             {
                 var filePath = request?.FilePath ?? "sampleData.csv";
+                var generateEmbeddings = request?.GenerateEmbeddings ?? true;
                 
-                logger.LogInformation("Starting vehicle indexing from {FilePath}", filePath);
+                logger.LogInformation("Starting vehicle indexing from {FilePath}, GenerateEmbeddings: {GenerateEmbeddings}", 
+                    filePath, generateEmbeddings);
+
+                if (!generateEmbeddings)
+                {
+                    return Results.BadRequest(new { error = "Embedding generation is required for indexing" });
+                }
 
                 // Load vehicles from CSV
                 IEnumerable<Vehicle> vehicles;

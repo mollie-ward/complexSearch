@@ -76,7 +76,7 @@ public class EmbeddingService : IEmbeddingService
                     _logger.LogDebug("Generated embedding with {Dimensions} dimensions", embedding.Length);
                     return embedding;
                 }
-                catch (Exception ex) when (ex.Message.Contains("429") && retryCount < _config.MaxRetries)
+                catch (Exception ex) when (IsRateLimitException(ex) && retryCount < _config.MaxRetries)
                 {
                     // Rate limit exceeded, use exponential backoff
                     var delay = TimeSpan.FromSeconds(Math.Pow(2, retryCount));
@@ -157,5 +157,20 @@ public class EmbeddingService : IEmbeddingService
             embeddings.Count, vehicleList.Count);
 
         return embeddings;
+    }
+
+    /// <summary>
+    /// Determines if the exception is a rate limit exception.
+    /// </summary>
+    private static bool IsRateLimitException(Exception ex)
+    {
+        // Check for Azure RequestFailedException with 429 status
+        if (ex is Azure.RequestFailedException rfe && rfe.Status == 429)
+        {
+            return true;
+        }
+        
+        // Fallback to message check for other exception types
+        return ex.Message.Contains("429") || ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase);
     }
 }
