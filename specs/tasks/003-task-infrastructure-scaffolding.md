@@ -1,6 +1,8 @@
 # Task: Infrastructure & Orchestration Scaffolding
 
 **Task ID:** 003  
+**GitHub Issue:** [#5](https://github.com/mollie-ward/complexSearch/issues/5)  
+**Status:** Assigned to Copilot (PR pending)  
 **Feature:** Infrastructure Foundation  
 **Type:** Scaffolding  
 **Priority:** Critical (Must complete before deployment)  
