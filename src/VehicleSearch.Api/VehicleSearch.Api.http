@@ -1,0 +1,5 @@
+@VehicleSearch.Api_HostAddress = https://localhost:7001
+
+GET {{VehicleSearch.Api_HostAddress}}/api/health
+
+###
