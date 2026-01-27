@@ -49,6 +49,159 @@ TODO
 
 TODO
 
+## 🚗 Vehicle Search Application - Local Development
+
+This repository now contains a fully functional AI-powered vehicle search application. Here's how to run it locally:
+
+### Prerequisites
+
+- .NET 8.0 SDK
+- Node.js 20+
+- Docker (optional, for containerized deployment)
+
+### Running with .NET Aspire (Recommended)
+
+.NET Aspire provides the easiest way to run the entire stack with a single command:
+
+1. **Clone the repository** (if you haven't already)
+2. **Install dependencies:**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+3. **Configure environment variables** (optional for local dev):
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Azure credentials if needed
+   ```
+
+4. **Run the entire stack:**
+   ```bash
+   npm run dev
+   # or directly: dotnet run --project src/VehicleSearch.AppHost
+   ```
+
+5. **Access the applications:**
+   - **Aspire Dashboard**: http://localhost:15000 (Service orchestration and monitoring)
+   - **Frontend**: http://localhost:3000
+   - **Backend API**: http://localhost:5001
+   - **API Swagger**: http://localhost:5001/swagger
+
+The Aspire dashboard provides:
+- Real-time service status
+- Aggregated logs from all services
+- Distributed tracing
+- Health check monitoring
+
+### Running Services Individually
+
+If you prefer to run services separately:
+
+**Backend API:**
+```bash
+npm run dev:api
+# or: dotnet run --project src/VehicleSearch.Api
+```
+
+**Frontend:**
+```bash
+npm run dev:frontend
+# or: cd frontend && npm run dev
+```
+
+### Running with Docker Compose
+
+For a containerized setup without Aspire:
+
+1. **Build the containers:**
+   ```bash
+   npm run docker:build
+   # or: docker-compose build
+   ```
+
+2. **Start the services:**
+   ```bash
+   npm run docker:up
+   # or: docker-compose up
+   ```
+
+3. **Access the applications:**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:5001
+
+4. **Stop the services:**
+   ```bash
+   npm run docker:down
+   # or: docker-compose down
+   ```
+
+### Building the Solution
+
+**Build all .NET projects:**
+```bash
+npm run build
+# or: dotnet build src/VehicleSearch.slnx
+```
+
+**Build frontend:**
+```bash
+npm run build:frontend
+# or: cd frontend && npm run build
+```
+
+### Running Tests
+
+**Run all .NET tests:**
+```bash
+npm run test
+# or: dotnet test src/VehicleSearch.slnx
+```
+
+**Run frontend tests:**
+```bash
+npm run test:frontend
+# or: cd frontend && npm test
+```
+
+### Environment Configuration
+
+The application uses the following environment variables (see `.env.example` for a complete list):
+
+- `AZURE_SEARCH_ENDPOINT`: Azure AI Search endpoint
+- `AZURE_SEARCH_API_KEY`: Azure AI Search API key
+- `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint
+- `AZURE_OPENAI_API_KEY`: Azure OpenAI API key
+- `AZURE_OPENAI_DEPLOYMENT`: GPT model deployment name
+- `AZURE_OPENAI_EMBEDDING_DEPLOYMENT`: Embedding model deployment name
+- `GITHUB_TOKEN`: GitHub token for GitHub Models (alternative to Azure OpenAI)
+
+For local development, you can use user secrets for the .NET API:
+```bash
+cd src/VehicleSearch.Api
+dotnet user-secrets set "ConnectionStrings:AzureAISearch" "your-endpoint"
+dotnet user-secrets set "ConnectionStrings:AzureOpenAI" "your-endpoint"
+```
+
+### Troubleshooting
+
+**Services not starting:**
+- Ensure all dependencies are installed (`npm install` in frontend)
+- Check that ports 3000, 5001, 7001, and 15000 are available
+- Review logs in the Aspire dashboard
+
+**Build errors:**
+- Run `dotnet restore` in the src directory
+- Ensure .NET 8.0 SDK is installed: `dotnet --version`
+
+**Frontend errors:**
+- Check Node.js version: `node --version` (should be 20+)
+- Clear Next.js cache: `cd frontend && rm -rf .next`
+
+---
+
+
 ### Option 4: Install Into Existing Project using Manual Script
 
 Transform any existing project into a spec2cloud-enabled development environment:

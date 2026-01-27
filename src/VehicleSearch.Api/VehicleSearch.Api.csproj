@@ -19,6 +19,7 @@
     <ProjectReference Include="..\VehicleSearch.Core\VehicleSearch.Core.csproj" />
     <ProjectReference Include="..\VehicleSearch.Infrastructure\VehicleSearch.Infrastructure.csproj" />
     <ProjectReference Include="..\VehicleSearch.Agents\VehicleSearch.Agents.csproj" />
+    <ProjectReference Include="..\VehicleSearch.ServiceDefaults\VehicleSearch.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

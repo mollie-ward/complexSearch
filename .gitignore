@@ -28,3 +28,15 @@ frontend/out/
 frontend/build/
 frontend/.env*.local
 frontend/openapi.json
+
+# Environment files (keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# Root node_modules (if any)
+node_modules/
+
+# Aspire
+.aspire/
+

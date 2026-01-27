@@ -4,6 +4,9 @@ using VehicleSearch.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add service defaults (OpenTelemetry, health checks, service discovery)
+builder.AddServiceDefaults();
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -74,6 +77,9 @@ app.UseHttpsRedirection();
 
 // 8. Routing
 app.UseRouting();
+
+// Map default endpoints (health checks, etc.)
+app.MapDefaultEndpoints();
 
 // Map endpoints
 app.MapHealthEndpoints();

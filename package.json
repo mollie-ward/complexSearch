@@ -1,0 +1,28 @@
+{
+  "name": "vehicle-search",
+  "version": "1.0.0",
+  "description": "AI-powered vehicle search application",
+  "private": true,
+  "scripts": {
+    "dev": "dotnet run --project src/VehicleSearch.AppHost",
+    "dev:api": "dotnet run --project src/VehicleSearch.Api",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "dotnet build src/VehicleSearch.slnx",
+    "build:frontend": "cd frontend && npm run build",
+    "test": "dotnet test src/VehicleSearch.slnx",
+    "test:frontend": "cd frontend && npm test",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "keywords": [
+    "vehicle-search",
+    "ai",
+    "azure",
+    "dotnet",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "ISC"
+}
