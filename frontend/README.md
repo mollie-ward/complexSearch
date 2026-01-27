@@ -120,7 +120,7 @@ More components will be added as needed for feature implementation.
 
 ## Development Guidelines
 
-- Use server components by default (Next.js 15+)
+- Use server components by default (Next.js 16+)
 - Add `'use client'` directive only when necessary
 - Follow TypeScript strict mode
 - Use path aliases (`@/*` for `src/*`)
