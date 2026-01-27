@@ -65,6 +65,13 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IIntentClassifier, Vehi
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEntityExtractor, VehicleSearch.Infrastructure.AI.EntityExtractor>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IQueryUnderstandingService, VehicleSearch.Infrastructure.AI.QueryUnderstandingService>();
 
+// Register Attribute Mapping services
+builder.Services.Configure<VehicleSearch.Infrastructure.AI.QualitativeTermsConfig>(
+    builder.Configuration.GetSection("QualitativeTerms"));
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.AI.OperatorInferenceService>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ConstraintParser>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IAttributeMapperService, VehicleSearch.Infrastructure.AI.AttributeMapperService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline

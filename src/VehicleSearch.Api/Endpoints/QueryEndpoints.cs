@@ -162,6 +162,52 @@ public static class QueryEndpoints
         .WithName("ExtractEntities")
         .WithSummary("Extract entities from query")
         .WithDescription("Extracts vehicle-related entities from a user query");
+
+        // POST /api/v1/query/map
+        group.MapPost("/map", async (
+            MapQueryRequest request,
+            [FromServices] IAttributeMapperService mapperService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (request.ParsedQuery == null)
+                {
+                    return Results.BadRequest(new { error = "ParsedQuery cannot be null" });
+                }
+
+                var mappedQuery = await mapperService.MapToSearchQueryAsync(request.ParsedQuery, cancellationToken);
+
+                var response = new MapQueryResponse
+                {
+                    Constraints = mappedQuery.Constraints.Select(c => new ConstraintResponse
+                    {
+                        FieldName = c.FieldName,
+                        Operator = c.Operator.ToString(),
+                        Value = c.Value,
+                        Type = c.Type.ToString()
+                    }).ToList(),
+                    UnmappableTerms = mappedQuery.UnmappableTerms,
+                    Metadata = mappedQuery.Metadata
+                };
+
+                return Results.Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to map query",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("MapQuery")
+        .WithSummary("Map parsed query to search constraints")
+        .WithDescription("Maps extracted entities from a parsed query into structured search constraints");
     }
 
     /// <summary>
@@ -240,5 +286,63 @@ public static class QueryEndpoints
         /// End position in query.
         /// </summary>
         public int EndPosition { get; init; }
+    }
+
+    /// <summary>
+    /// Request model for mapping query.
+    /// </summary>
+    public record MapQueryRequest
+    {
+        /// <summary>
+        /// The parsed query with entities to map.
+        /// </summary>
+        public ParsedQuery ParsedQuery { get; init; } = null!;
+    }
+
+    /// <summary>
+    /// Response model for mapped query.
+    /// </summary>
+    public record MapQueryResponse
+    {
+        /// <summary>
+        /// The list of search constraints.
+        /// </summary>
+        public List<ConstraintResponse> Constraints { get; init; } = new();
+
+        /// <summary>
+        /// Terms that could not be mapped.
+        /// </summary>
+        public List<string> UnmappableTerms { get; init; } = new();
+
+        /// <summary>
+        /// Metadata about the mapping.
+        /// </summary>
+        public Dictionary<string, object> Metadata { get; init; } = new();
+    }
+
+    /// <summary>
+    /// Response model for a constraint.
+    /// </summary>
+    public record ConstraintResponse
+    {
+        /// <summary>
+        /// Field name in the search index.
+        /// </summary>
+        public string FieldName { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Constraint operator.
+        /// </summary>
+        public string Operator { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Constraint value.
+        /// </summary>
+        public object Value { get; init; } = null!;
+
+        /// <summary>
+        /// Constraint type.
+        /// </summary>
+        public string Type { get; init; } = string.Empty;
     }
 }
