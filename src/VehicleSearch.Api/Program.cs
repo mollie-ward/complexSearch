@@ -43,6 +43,8 @@ builder.Services.AddCors(options =>
 // Register application services
 builder.Services.Configure<VehicleSearch.Core.Models.AzureSearchConfig>(
     builder.Configuration.GetSection("AzureAISearch"));
+builder.Services.Configure<VehicleSearch.Core.Models.AzureOpenAIConfig>(
+    builder.Configuration.GetSection("AzureOpenAI"));
 
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.CsvDataLoader>();
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.DataNormalizer>();
@@ -52,6 +54,11 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IDataIngestionService, 
 // Register Azure Search services
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Search.AzureSearchClient>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISearchIndexService, VehicleSearch.Infrastructure.Search.SearchIndexService>();
+
+// Register Azure OpenAI and Embedding services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEmbeddingService, VehicleSearch.Infrastructure.AI.EmbeddingService>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleIndexingService, VehicleSearch.Infrastructure.Search.VehicleIndexingService>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleRetrievalService, VehicleSearch.Infrastructure.Search.VehicleRetrievalService>();
 
 var app = builder.Build();
 
@@ -94,6 +101,7 @@ app.MapDefaultEndpoints();
 // Map endpoints
 app.MapHealthEndpoints();
 app.MapKnowledgeBaseEndpoints();
+app.MapVehiclesEndpoints();
 
 // Run the application
 try
