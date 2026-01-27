@@ -60,6 +60,11 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEmbeddingService, Vehi
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleIndexingService, VehicleSearch.Infrastructure.Search.VehicleIndexingService>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleRetrievalService, VehicleSearch.Infrastructure.Search.VehicleRetrievalService>();
 
+// Register Query Understanding services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IIntentClassifier, VehicleSearch.Infrastructure.AI.IntentClassifier>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEntityExtractor, VehicleSearch.Infrastructure.AI.EntityExtractor>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IQueryUnderstandingService, VehicleSearch.Infrastructure.AI.QueryUnderstandingService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -102,6 +107,7 @@ app.MapDefaultEndpoints();
 app.MapHealthEndpoints();
 app.MapKnowledgeBaseEndpoints();
 app.MapVehiclesEndpoints();
+app.MapQueryEndpoints();
 
 // Run the application
 try
