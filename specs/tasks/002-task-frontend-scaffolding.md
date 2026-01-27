@@ -1,6 +1,8 @@
 # Task: Frontend Application Scaffolding
 
 **Task ID:** 002  
+**GitHub Issue:** [#3](https://github.com/mollie-ward/complexSearch/issues/3)  
+**Pull Request:** [#4](https://github.com/mollie-ward/complexSearch/pull/4)  
 **Feature:** Infrastructure Foundation  
 **Type:** Scaffolding  
 **Priority:** Critical (Must complete before frontend features)  
