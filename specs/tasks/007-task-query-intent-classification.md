@@ -1,6 +1,7 @@
 # Task: Query Intent Classification & Entity Extraction
 
 **Task ID:** 007  
+**GitHub Issue:** [#15](https://github.com/mollie-ward/complexSearch/issues/15)  
 **Feature:** Natural Language Query Understanding  
 **Type:** Backend Implementation  
 **Priority:** High  
