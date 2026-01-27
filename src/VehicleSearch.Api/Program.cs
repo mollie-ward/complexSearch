@@ -41,7 +41,10 @@ builder.Services.AddCors(options =>
 });
 
 // Register application services
-// TODO: Add service registrations in future tasks
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.CsvDataLoader>();
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.DataNormalizer>();
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.DataValidator>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IDataIngestionService, VehicleSearch.Infrastructure.Data.DataIngestionService>();
 
 var app = builder.Build();
 
@@ -83,6 +86,7 @@ app.MapDefaultEndpoints();
 
 // Map endpoints
 app.MapHealthEndpoints();
+app.MapKnowledgeBaseEndpoints();
 
 // Run the application
 try
