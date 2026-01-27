@@ -83,6 +83,103 @@ public static class KnowledgeBaseEndpoints
         .WithName("GetKnowledgeBaseStatus")
         .WithSummary("Get knowledge base status")
         .WithDescription("Returns the current status of the knowledge base including total vehicles and last ingestion date");
+
+        // POST /api/v1/knowledge-base/index/create
+        group.MapPost("/index/create", async (
+            [FromServices] ISearchIndexService indexService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var startTime = DateTime.UtcNow;
+                await indexService.CreateIndexAsync(cancellationToken);
+
+                var status = await indexService.GetIndexStatusAsync(cancellationToken);
+
+                return Results.Ok(new
+                {
+                    indexName = status.IndexName,
+                    fieldsCount = 18, // Total number of fields in the schema
+                    vectorFieldsCount = 1,
+                    created = true,
+                    timestamp = startTime
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return Results.Problem(
+                    title: "Index creation failed",
+                    detail: "An error occurred while creating the search index. Please check the logs for details.",
+                    statusCode: 500);
+            }
+        })
+        .WithName("CreateSearchIndex")
+        .WithSummary("Create the Azure AI Search index")
+        .WithDescription("Creates the search index with the full schema including vector fields for hybrid search");
+
+        // DELETE /api/v1/knowledge-base/index
+        group.MapDelete("/index", async (
+            [FromServices] ISearchIndexService indexService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                await indexService.DeleteIndexAsync(cancellationToken);
+
+                return Results.Ok(new
+                {
+                    deleted = true,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (Exception)
+            {
+                return Results.Problem(
+                    title: "Index deletion failed",
+                    detail: "An error occurred while deleting the search index. Please check the logs for details.",
+                    statusCode: 500);
+            }
+        })
+        .WithName("DeleteSearchIndex")
+        .WithSummary("Delete the Azure AI Search index")
+        .WithDescription("Deletes the search index and all its documents");
+
+        // GET /api/v1/knowledge-base/index/status
+        group.MapGet("/index/status", async (
+            [FromServices] ISearchIndexService indexService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var status = await indexService.GetIndexStatusAsync(cancellationToken);
+
+                return Results.Ok(new
+                {
+                    exists = status.Exists,
+                    indexName = status.IndexName,
+                    documentCount = status.DocumentCount,
+                    storageSize = status.StorageSize
+                });
+            }
+            catch (Exception)
+            {
+                return Results.Problem(
+                    title: "Failed to get index status",
+                    detail: "An error occurred while retrieving the index status. Please check the logs for details.",
+                    statusCode: 500);
+            }
+        })
+        .WithName("GetSearchIndexStatus")
+        .WithSummary("Get search index status")
+        .WithDescription("Returns the current status of the search index including document count and storage size");
     }
 
     /// <summary>
