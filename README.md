@@ -55,13 +55,27 @@ This repository now contains a fully functional AI-powered vehicle search applic
 
 ### Prerequisites
 
-- .NET 8.0 SDK
+- .NET 8.0 SDK or later
 - Node.js 20+
 - Docker (optional, for containerized deployment)
+- .NET Aspire workload (optional, for Aspire orchestration - see installation below)
 
-### Running with .NET Aspire (Recommended)
+### Installing .NET Aspire Workload (Optional)
 
-.NET Aspire provides the easiest way to run the entire stack with a single command:
+If you want to use .NET Aspire for orchestration:
+
+```bash
+dotnet workload update
+dotnet workload install aspire
+```
+
+Note: Aspire is optional. You can run services individually or use Docker Compose instead.
+
+### Running with .NET Aspire (Recommended - requires Aspire workload)
+
+.NET Aspire provides the easiest way to run the entire stack with a single command.
+
+**Important**: Requires .NET Aspire workload to be installed (see Prerequisites above).
 
 1. **Clone the repository** (if you haven't already)
 2. **Install dependencies:**
