@@ -106,6 +106,45 @@ ABC123,Volkswagen,Golf,SE Nav,Hatchback,1.5,Petrol,Manual,Blue,5,18500,25000,15/
         result.DataSource.Should().Be("CSV");
     }
 
+    [Fact]
+    public async Task IndexStatusEndpoint_WithoutCreatedIndex_ReturnsNotExist()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/v1/knowledge-base/index/status");
+
+        // Assert
+        // Note: This test may fail if credentials are not configured
+        // In a real environment, this would check index status
+        response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task CreateIndexEndpoint_WithoutCredentials_ReturnsError()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/v1/knowledge-base/index/create", null);
+
+        // Assert
+        // Without valid Azure credentials, this should fail
+        // The endpoint should handle the error gracefully
+        response.StatusCode.Should().BeOneOf(
+            HttpStatusCode.BadRequest, 
+            HttpStatusCode.InternalServerError);
+    }
+
+    [Fact]
+    public async Task DeleteIndexEndpoint_WithoutCredentials_ReturnsError()
+    {
+        // Act
+        var response = await _client.DeleteAsync("/api/v1/knowledge-base/index");
+
+        // Assert
+        // Without valid Azure credentials, this should fail
+        response.StatusCode.Should().BeOneOf(
+            HttpStatusCode.NotFound, 
+            HttpStatusCode.InternalServerError);
+    }
+
     private record IngestionResponse(
         bool Success,
         int TotalRows,

@@ -41,10 +41,17 @@ builder.Services.AddCors(options =>
 });
 
 // Register application services
+builder.Services.Configure<VehicleSearch.Core.Models.AzureSearchConfig>(
+    builder.Configuration.GetSection("AzureAISearch"));
+
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.CsvDataLoader>();
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.DataNormalizer>();
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.Data.DataValidator>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IDataIngestionService, VehicleSearch.Infrastructure.Data.DataIngestionService>();
+
+// Register Azure Search services
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.Search.AzureSearchClient>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISearchIndexService, VehicleSearch.Infrastructure.Search.SearchIndexService>();
 
 var app = builder.Build();
 

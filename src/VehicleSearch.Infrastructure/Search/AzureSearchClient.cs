@@ -1,10 +1,53 @@
+using Azure;
+using Azure.Search.Documents;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using VehicleSearch.Core.Models;
+
 namespace VehicleSearch.Infrastructure.Search;
 
 /// <summary>
 /// Client for Azure Search operations.
-/// Placeholder for future implementation.
+/// Provides access to Azure AI Search for document operations.
 /// </summary>
 public class AzureSearchClient
 {
-    // TODO: Implement Azure Search integration in future tasks
+    private readonly SearchClient _searchClient;
+    private readonly AzureSearchConfig _config;
+    private readonly ILogger<AzureSearchClient> _logger;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureSearchClient"/> class.
+    /// </summary>
+    /// <param name="config">Azure Search configuration.</param>
+    /// <param name="logger">Logger instance.</param>
+    public AzureSearchClient(
+        IOptions<AzureSearchConfig> config,
+        ILogger<AzureSearchClient> logger)
+    {
+        _config = config.Value ?? throw new ArgumentNullException(nameof(config));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        if (string.IsNullOrWhiteSpace(_config.Endpoint))
+        {
+            throw new InvalidOperationException("Azure Search endpoint is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_config.ApiKey))
+        {
+            throw new InvalidOperationException("Azure Search API key is not configured.");
+        }
+
+        _searchClient = new SearchClient(
+            new Uri(_config.Endpoint),
+            _config.IndexName,
+            new AzureKeyCredential(_config.ApiKey));
+
+        _logger.LogInformation("Azure Search client initialized for index: {IndexName}", _config.IndexName);
+    }
+
+    /// <summary>
+    /// Gets the search client for document operations.
+    /// </summary>
+    public SearchClient Client => _searchClient;
 }
