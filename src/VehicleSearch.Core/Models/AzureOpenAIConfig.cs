@@ -34,4 +34,9 @@ public class AzureOpenAIConfig
     /// Gets or sets the batch size for embedding generation.
     /// </summary>
     public int BatchSize { get; set; } = 100;
+
+    /// <summary>
+    /// Gets or sets the deployment name for the chat model.
+    /// </summary>
+    public string? ChatDeploymentName { get; set; }
 }
