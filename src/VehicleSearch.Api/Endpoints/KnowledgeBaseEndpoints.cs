@@ -99,8 +99,8 @@ public static class KnowledgeBaseEndpoints
                 return Results.Ok(new
                 {
                     indexName = status.IndexName,
-                    fieldsCount = 18, // Total number of fields in the schema
-                    vectorFieldsCount = 1,
+                    fieldsCount = VehicleSearch.Infrastructure.Search.SearchIndexService.TotalFieldCount,
+                    vectorFieldsCount = VehicleSearch.Infrastructure.Search.SearchIndexService.VectorFieldCount,
                     created = true,
                     timestamp = startTime
                 });

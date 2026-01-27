@@ -18,6 +18,16 @@ public class SearchIndexService : ISearchIndexService
     private readonly ILogger<SearchIndexService> _logger;
 
     /// <summary>
+    /// Total number of fields in the vehicles index schema.
+    /// </summary>
+    public const int TotalFieldCount = 18;
+
+    /// <summary>
+    /// Number of vector fields in the index.
+    /// </summary>
+    public const int VectorFieldCount = 1;
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="SearchIndexService"/> class.
     /// </summary>
     /// <param name="config">Azure Search configuration.</param>
@@ -99,15 +109,11 @@ public class SearchIndexService : ISearchIndexService
     {
         try
         {
-            var indexNames = _indexClient.GetIndexNamesAsync(cancellationToken);
-            await foreach (var indexName in indexNames)
-            {
-                if (indexName == _config.IndexName)
-                {
-                    return true;
-                }
-            }
-
+            await _indexClient.GetIndexAsync(_config.IndexName, cancellationToken);
+            return true;
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
             return false;
         }
         catch (Exception ex)

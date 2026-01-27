@@ -30,16 +30,12 @@ public class AzureSearchClient
 
         if (string.IsNullOrWhiteSpace(_config.Endpoint))
         {
-            _logger.LogWarning("Azure Search endpoint is not configured. Search functionality will be limited.");
-            _searchClient = null!;
-            return;
+            throw new InvalidOperationException("Azure Search endpoint is not configured.");
         }
 
         if (string.IsNullOrWhiteSpace(_config.ApiKey))
         {
-            _logger.LogWarning("Azure Search API key is not configured. Search functionality will be limited.");
-            _searchClient = null!;
-            return;
+            throw new InvalidOperationException("Azure Search API key is not configured.");
         }
 
         _searchClient = new SearchClient(
