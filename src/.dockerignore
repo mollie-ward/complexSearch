@@ -1,0 +1,27 @@
+# Ignore build artifacts
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+
+# Ignore test projects
+**/tests/
+
+# Ignore git
+**/.git/
+**/.gitignore
+
+# Ignore documentation
+**/*.md
+
+# Ignore environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Ignore node modules
+**/node_modules/
+
+# Ignore Aspire
+**/VehicleSearch.AppHost/
+**/VehicleSearch.ServiceDefaults/
