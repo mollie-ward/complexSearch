@@ -10,24 +10,24 @@ public class PatternMatcher
 {
     // Price patterns - matches various price formats
     private static readonly Regex PricePattern = new(
-        @"£?\s*(\d{1,3}(?:,\d{3})*|\d+)k?\s*(?:pounds?)?",
+        @"£?\s*(\d+(?:,\d{3})*)\s*k?\s*(?:pounds?)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex PriceRangePattern = new(
-        @"(?:between\s+)?£?\s*(\d{1,3}(?:,\d{3})*|\d+)k?\s*(?:-|to|and)\s*£?\s*(\d{1,3}(?:,\d{3})*|\d+)k?",
+        @"(?:between\s+)?£?\s*(\d+(?:,\d{3})*)\s*k?\s*(?:-|to|and)\s*£?\s*(\d+(?:,\d{3})*)\s*k?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex PriceQualifierPattern = new(
-        @"(?:under|less\s+than|up\s+to|below|max)\s+£?\s*(\d{1,3}(?:,\d{3})*|\d+)k?",
+        @"(?:under|less\s+than|up\s+to|below|max)\s+£?\s*(\d+(?:,\d{3})*)\s*k?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     // Mileage patterns
     private static readonly Regex MileagePattern = new(
-        @"(\d{1,3}(?:,\d{3})*|\d+)k?\s*(?:miles?)?",
+        @"(\d+(?:,\d{3})*)\s*k?\s*(?:miles?)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex MileageQualifierPattern = new(
-        @"(?:under|less\s+than|up\s+to|below|max)\s+(\d{1,3}(?:,\d{3})*|\d+)k?\s*(?:miles?)?",
+        @"(?:under|less\s+than|up\s+to|below|max)\s+(\d+(?:,\d{3})*)\s*k?\s*(?:miles?)?",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex LowMileagePattern = new(
@@ -50,8 +50,18 @@ public class PatternMatcher
         var rangeMatches = PriceRangePattern.Matches(query);
         foreach (Match match in rangeMatches)
         {
-            var minPrice = ParsePrice(match.Groups[1].Value);
-            var maxPrice = ParsePrice(match.Groups[2].Value);
+            // Extract the full text for each number to check for 'k' suffix
+            var group1Text = query.Substring(match.Groups[1].Index, match.Groups[1].Length);
+            var group2Text = query.Substring(match.Groups[2].Index, match.Groups[2].Length);
+            
+            // Check if 'k' follows each number
+            var hasK1 = match.Groups[1].Index + match.Groups[1].Length < query.Length &&
+                       query[match.Groups[1].Index + match.Groups[1].Length] == 'k';
+            var hasK2 = match.Groups[2].Index + match.Groups[2].Length < query.Length &&
+                       query[match.Groups[2].Index + match.Groups[2].Length] == 'k';
+            
+            var minPrice = hasK1 ? ParsePrice(match.Groups[1].Value + "k") : ParsePrice(match.Groups[1].Value);
+            var maxPrice = hasK2 ? ParsePrice(match.Groups[2].Value + "k") : ParsePrice(match.Groups[2].Value);
             
             entities.Add(new ExtractedEntity
             {
@@ -69,7 +79,11 @@ public class PatternMatcher
         {
             if (!IsOverlapping(match, rangeMatches))
             {
-                var price = ParsePrice(match.Groups[1].Value);
+                // Check if 'k' follows the number
+                var hasK = match.Groups[1].Index + match.Groups[1].Length < query.Length &&
+                          query[match.Groups[1].Index + match.Groups[1].Length] == 'k';
+                var price = hasK ? ParsePrice(match.Groups[1].Value + "k") : ParsePrice(match.Groups[1].Value);
+                
                 entities.Add(new ExtractedEntity
                 {
                     Type = EntityType.Price,
@@ -87,7 +101,11 @@ public class PatternMatcher
         {
             if (!IsOverlapping(match, rangeMatches) && !IsOverlapping(match, qualifierMatches))
             {
-                var price = ParsePrice(match.Groups[1].Value);
+                // Check if 'k' follows the number
+                var hasK = match.Groups[1].Index + match.Groups[1].Length < query.Length &&
+                          query[match.Groups[1].Index + match.Groups[1].Length] == 'k';
+                var price = hasK ? ParsePrice(match.Groups[1].Value + "k") : ParsePrice(match.Groups[1].Value);
+                
                 // Only consider values that look like prices (>= 1000)
                 if (price >= 1000)
                 {
@@ -132,7 +150,11 @@ public class PatternMatcher
         var qualifierMatches = MileageQualifierPattern.Matches(query);
         foreach (Match match in qualifierMatches)
         {
-            var mileage = ParseMileage(match.Groups[1].Value);
+            // Check if 'k' follows the number
+            var hasK = match.Groups[1].Index + match.Groups[1].Length < query.Length &&
+                      query[match.Groups[1].Index + match.Groups[1].Length] == 'k';
+            var mileage = hasK ? ParseMileage(match.Groups[1].Value + "k") : ParseMileage(match.Groups[1].Value);
+            
             entities.Add(new ExtractedEntity
             {
                 Type = EntityType.Mileage,
@@ -164,9 +186,14 @@ public class PatternMatcher
                     continue;
                 }
 
-                var mileage = ParseMileage(match.Groups[1].Value);
+                // Check if 'k' follows the number
+                var hasK = match.Groups[1].Index + match.Groups[1].Length < query.Length &&
+                          query[match.Groups[1].Index + match.Groups[1].Length] == 'k';
+                var mileage = hasK ? ParseMileage(match.Groups[1].Value + "k") : ParseMileage(match.Groups[1].Value);
+                
                 // Only consider reasonable mileage values (1,000 to 500,000)
-                if (mileage >= 1000 && mileage <= 500000 && query.ToLower().Contains("mile"))
+                // Check for "mile" keyword anywhere in the query
+                if (mileage >= 1000 && mileage <= 500000 && query.Contains("mile", StringComparison.OrdinalIgnoreCase))
                 {
                     entities.Add(new ExtractedEntity
                     {
@@ -211,16 +238,16 @@ public class PatternMatcher
     /// </summary>
     private static int ParsePrice(string priceStr)
     {
-        // Remove commas
-        priceStr = priceStr.Replace(",", "");
+        // Remove commas and trim
+        priceStr = priceStr.Replace(",", "").Trim();
 
         // Handle 'k' suffix (thousands)
         if (priceStr.EndsWith("k", StringComparison.OrdinalIgnoreCase))
         {
-            priceStr = priceStr[..^1];
-            if (int.TryParse(priceStr, out int thousands))
+            priceStr = priceStr[..^1].Trim();
+            if (double.TryParse(priceStr, out double thousands))
             {
-                return thousands * 1000;
+                return (int)(thousands * 1000);
             }
         }
 
@@ -237,16 +264,16 @@ public class PatternMatcher
     /// </summary>
     private static int ParseMileage(string mileageStr)
     {
-        // Remove commas
-        mileageStr = mileageStr.Replace(",", "");
+        // Remove commas and trim
+        mileageStr = mileageStr.Replace(",", "").Trim();
 
         // Handle 'k' suffix (thousands)
         if (mileageStr.EndsWith("k", StringComparison.OrdinalIgnoreCase))
         {
-            mileageStr = mileageStr[..^1];
-            if (int.TryParse(mileageStr, out int thousands))
+            mileageStr = mileageStr[..^1].Trim();
+            if (double.TryParse(mileageStr, out double thousands))
             {
-                return thousands * 1000;
+                return (int)(thousands * 1000);
             }
         }
 
@@ -278,7 +305,7 @@ public class PatternMatcher
     }
 
     /// <summary>
-    /// Calculates Levenshtein distance for fuzzy matching.
+    /// Calculates Levenshtein distance for fuzzy matching (case-insensitive).
     /// </summary>
     public static int LevenshteinDistance(string source, string target)
     {
@@ -291,6 +318,10 @@ public class PatternMatcher
         {
             return source.Length;
         }
+
+        // Make comparison case-insensitive
+        source = source.ToLowerInvariant();
+        target = target.ToLowerInvariant();
 
         var distance = new int[source.Length + 1, target.Length + 1];
 
