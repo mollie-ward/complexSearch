@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using VehicleSearch.Core.Entities;
 using VehicleSearch.Core.Interfaces;
 
 namespace VehicleSearch.Api.Endpoints;
@@ -180,6 +181,63 @@ public static class KnowledgeBaseEndpoints
         .WithName("GetSearchIndexStatus")
         .WithSummary("Get search index status")
         .WithDescription("Returns the current status of the search index including document count and storage size");
+
+        // POST /api/v1/knowledge-base/index-vehicles
+        group.MapPost("/index-vehicles", async (
+            [FromBody] IndexVehiclesRequest? request,
+            [FromServices] IDataIngestionService ingestionService,
+            [FromServices] IVehicleIndexingService indexingService,
+            ILogger<Program> logger,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                var filePath = request?.FilePath ?? "sampleData.csv";
+                
+                logger.LogInformation("Starting vehicle indexing from {FilePath}", filePath);
+
+                // Load vehicles from CSV
+                IEnumerable<Vehicle> vehicles;
+                if (!File.Exists(filePath))
+                {
+                    return Results.NotFound(new { error = $"File not found: {filePath}" });
+                }
+
+                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    vehicles = await ingestionService.ParseCsvAsync(fileStream, cancellationToken);
+                }
+
+                // Index vehicles with embeddings
+                var result = await indexingService.IndexVehiclesAsync(vehicles, cancellationToken);
+
+                return Results.Ok(new
+                {
+                    totalVehicles = result.TotalVehicles,
+                    succeeded = result.Succeeded,
+                    failed = result.Failed,
+                    embeddingsGenerated = result.EmbeddingsGenerated,
+                    indexingTime = (int)result.Duration.TotalMilliseconds,
+                    errors = result.Errors.Select(e => new
+                    {
+                        vehicleId = e.VehicleId,
+                        message = e.Message,
+                        timestamp = e.Timestamp
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during vehicle indexing");
+                return Results.Problem(
+                    title: "Vehicle indexing failed",
+                    detail: "An error occurred during vehicle indexing. Please check the logs for details.",
+                    statusCode: 500);
+            }
+        })
+        .WithName("IndexVehicles")
+        .WithSummary("Index vehicles with embeddings")
+        .WithDescription("Loads vehicles from CSV, generates embeddings, and indexes them in Azure AI Search");
     }
 
     /// <summary>
@@ -196,5 +254,26 @@ public static class KnowledgeBaseEndpoints
         /// Gets the file path to ingest from.
         /// </summary>
         public string FilePath { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Request model for indexing vehicles.
+    /// </summary>
+    public record IndexVehiclesRequest
+    {
+        /// <summary>
+        /// Gets the file path to load vehicles from.
+        /// </summary>
+        public string FilePath { get; init; } = "sampleData.csv";
+
+        /// <summary>
+        /// Gets whether to generate embeddings.
+        /// </summary>
+        public bool GenerateEmbeddings { get; init; } = true;
+
+        /// <summary>
+        /// Gets the batch size for processing.
+        /// </summary>
+        public int BatchSize { get; init; } = 100;
     }
 }
