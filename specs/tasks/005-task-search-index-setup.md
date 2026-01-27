@@ -1,6 +1,8 @@
 # Task: Azure AI Search Index Setup
 
 **Task ID:** 005  
+**GitHub Issue:** [#11](https://github.com/mollie-ward/complexSearch/issues/11)  
+**Status:** Assigned to Copilot (PR pending)  
 **Feature:** Knowledge Base Integration  
 **Type:** Backend Implementation  
 **Priority:** High  

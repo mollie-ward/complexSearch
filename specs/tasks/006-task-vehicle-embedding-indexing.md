@@ -1,6 +1,7 @@
 # Task: Vehicle Embedding & Indexing
 
 **Task ID:** 006  
+**GitHub Issue:** [#13](https://github.com/mollie-ward/complexSearch/issues/13)  
 **Feature:** Knowledge Base Integration  
 **Type:** Backend Implementation  
 **Priority:** High  
