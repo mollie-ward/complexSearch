@@ -1,6 +1,7 @@
 # Task: Attribute Mapping & Constraint Parsing
 
 **Task ID:** 008  
+**GitHub Issue:** [#17](https://github.com/mollie-ward/complexSearch/issues/17)  
 **Feature:** Natural Language Query Understanding  
 **Type:** Backend Implementation  
 **Priority:** High  
