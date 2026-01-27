@@ -26,8 +26,11 @@ public class SearchIndexService : ISearchIndexService
         IOptions<AzureSearchConfig> config,
         ILogger<SearchIndexService> logger)
     {
-        _config = config.Value ?? throw new ArgumentNullException(nameof(config));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        ArgumentNullException.ThrowIfNull(config);
+        ArgumentNullException.ThrowIfNull(logger);
+        
+        _config = config.Value ?? throw new ArgumentNullException(nameof(config), "Configuration value cannot be null.");
+        _logger = logger;
 
         if (string.IsNullOrWhiteSpace(_config.Endpoint))
         {
