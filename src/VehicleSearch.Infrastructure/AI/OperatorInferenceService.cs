@@ -64,7 +64,7 @@ public class OperatorInferenceService
 
         foreach (var (keyword, op) in KeywordOperatorMap)
         {
-            if (contextLower.Contains(keyword.ToLowerInvariant()))
+            if (contextLower.Contains(keyword))
             {
                 _logger.LogDebug("Inferred operator {Operator} from context keyword '{Keyword}'", op, keyword);
                 return op;

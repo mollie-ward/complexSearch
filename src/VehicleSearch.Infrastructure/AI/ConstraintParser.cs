@@ -311,7 +311,18 @@ public class ConstraintParser
             JsonValueKind.String => value.GetString() ?? string.Empty,
             JsonValueKind.True => true,
             JsonValueKind.False => false,
-            JsonValueKind.Array => value.EnumerateArray().Select(e => ParseJsonValue(e)).ToArray(),
+            JsonValueKind.Array => value.EnumerateArray().Select(e => 
+            {
+                // Flatten arrays to prevent deep nesting - only parse primitive values
+                return e.ValueKind switch
+                {
+                    JsonValueKind.Number => e.TryGetInt32(out var i) ? (object)i : e.GetDouble(),
+                    JsonValueKind.String => e.GetString() ?? string.Empty,
+                    JsonValueKind.True => true,
+                    JsonValueKind.False => false,
+                    _ => e.ToString()
+                };
+            }).ToArray(),
             _ => value.ToString()
         };
     }
