@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using VehicleSearch.Core.Entities;
 
@@ -11,8 +10,6 @@ namespace VehicleSearch.Infrastructure.Data;
 public class DataNormalizer
 {
     private readonly ILogger<DataNormalizer> _logger;
-    private static readonly DateTime MinValidDate = new(1990, 1, 1);
-    private static readonly DateTime MaxValidDate = new(2026, 12, 31);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DataNormalizer"/> class.

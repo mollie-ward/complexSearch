@@ -14,6 +14,7 @@ namespace VehicleSearch.Infrastructure.Data;
 public class CsvDataLoader
 {
     private readonly ILogger<CsvDataLoader> _logger;
+    private const string NullDateValue = "01/01/0001";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CsvDataLoader"/> class.
@@ -161,8 +162,8 @@ public class CsvDataLoader
             if (string.IsNullOrWhiteSpace(text))
                 return null;
 
-            // Handle the special "01/01/0001" case as null
-            if (text == "01/01/0001")
+            // Handle the special null date value
+            if (text == NullDateValue)
                 return null;
 
             if (DateTime.TryParseExact(text, new[] { "dd/MM/yyyy", "d/M/yyyy" }, 
@@ -185,8 +186,8 @@ public class CsvDataLoader
             if (string.IsNullOrWhiteSpace(text))
                 return null;
 
-            // Handle the special "01/01/0001" case as null
-            if (text == "01/01/0001")
+            // Handle the special null date value
+            if (text == NullDateValue)
                 return null;
 
             if (DateTime.TryParseExact(text, new[] { "dd/MM/yyyy", "d/M/yyyy" }, 

@@ -31,11 +31,10 @@ public class DataValidator
     public ValidationResult Validate(IEnumerable<Vehicle> vehicles)
     {
         var result = new ValidationResult { IsValid = true };
-        var rowNumber = 1; // Start from 1 (excluding header)
+        var rowNumber = 2; // Start from 2 (1 is header, 2 is first data row)
 
         foreach (var vehicle in vehicles)
         {
-            rowNumber++;
             var errors = ValidateVehicle(vehicle, rowNumber);
             
             if (errors.Any())
@@ -46,6 +45,8 @@ public class DataValidator
                 _logger.LogWarning("Validation errors found for vehicle {VehicleId} at row {RowNumber}: {ErrorCount} errors",
                     vehicle.Id, rowNumber, errors.Count);
             }
+
+            rowNumber++;
         }
 
         if (result.IsValid)

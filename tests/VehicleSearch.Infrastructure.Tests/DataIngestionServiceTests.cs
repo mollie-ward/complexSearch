@@ -74,33 +74,6 @@ public class DataIngestionServiceTests
     [Fact]
     public async Task GenerateDescription_AllFields_CreatesReadableText()
     {
-        // This test verifies the description generation through the actual service
-        // Arrange
-        var vehicle = new Vehicle
-        {
-            Id = "TEST1",
-            Make = "Volkswagen",
-            Model = "Golf",
-            Derivative = "SE Nav",
-            BodyType = "Hatchback",
-            EngineSize = 1.5m,
-            FuelType = "Petrol",
-            TransmissionType = "Manual",
-            Colour = "Blue",
-            Mileage = 25000,
-            Price = 18500,
-            RegistrationDate = new DateTime(2020, 3, 15),
-            SaleLocation = "London",
-            Features = new List<string> { "Air Conditioning", "Bluetooth", "Parking Sensors" }
-        };
-
-        var vehicles = new List<Vehicle> { vehicle };
-        var equipment = new Dictionary<string, string>
-        {
-            { "TEST1", "Air Conditioning, Bluetooth, Parking Sensors" }
-        };
-        var declarations = new Dictionary<string, string>();
-
         // Use the actual normalizer and validator
         var normalizer = new DataNormalizer(Mock.Of<ILogger<DataNormalizer>>());
         var validator = new DataValidator(Mock.Of<ILogger<DataValidator>>());
@@ -114,17 +87,22 @@ public class DataIngestionServiceTests
 
         // Create a temporary CSV file for testing
         var tempFile = Path.GetTempFileName();
-        var csvContent = @"Registration Number,Make,Model,Derivative,Body,Engine Size,Fuel,Transmission,Colour,Number Of Doors,Buy Now Price,Mileage,Registration Date,Sale Location,Channel,Sale Type,Equipment,Service History Present,Number of Services,Last Service Date,MOT Expiry,Grade,VAT Type,Additional Information,Declarations,Cap Retail Price,Cap Clean Price
-TEST1,Volkswagen,Golf,SE Nav,Hatchback,1.5,Petrol,Manual,Blue,5,18500,25000,15/03/2020,London,Retail,Stock,""Air Conditioning, Bluetooth, Parking Sensors"",Yes,3,10/01/2023,15/03/2025,Grade A,VAT Qualifying,Full service history,HPI Clear,19000,17500";
-        await File.WriteAllTextAsync(tempFile, csvContent);
+        
+        // Build CSV content line by line for readability
+        var csvLines = new[]
+        {
+            "Registration Number,Make,Model,Derivative,Body,Engine Size,Fuel,Transmission,Colour,Number Of Doors,Buy Now Price,Mileage,Registration Date,Sale Location,Channel,Sale Type,Equipment,Service History Present,Number of Services,Last Service Date,MOT Expiry,Grade,VAT Type,Additional Information,Declarations,Cap Retail Price,Cap Clean Price",
+            "TEST1,Volkswagen,Golf,SE Nav,Hatchback,1.5,Petrol,Manual,Blue,5,18500,25000,15/03/2020,London,Retail,Stock,\"Air Conditioning, Bluetooth, Parking Sensors\",Yes,3,10/01/2023,15/03/2025,Grade A,VAT Qualifying,Full service history,HPI Clear,19000,17500"
+        };
+        
+        await File.WriteAllLinesAsync(tempFile, csvLines);
 
         try
         {
             // Act
             var result = await service.IngestFromCsvAsync(tempFile);
 
-            // We can't directly test the generated description without accessing internal methods,
-            // but we can verify the ingestion completed successfully
+            // Assert
             result.Should().NotBeNull();
             result.Success.Should().BeTrue();
         }
