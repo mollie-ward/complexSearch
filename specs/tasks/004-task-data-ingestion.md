@@ -1,6 +1,8 @@
 # Task: Data Ingestion & CSV Processing
 
 **Task ID:** 004  
+**GitHub Issue:** [#9](https://github.com/mollie-ward/complexSearch/issues/9)  
+**Status:** Assigned to Copilot (PR pending)  
 **Feature:** Knowledge Base Integration  
 **Type:** Backend Implementation  
 **Priority:** High  
