@@ -4,3 +4,19 @@ apm_modules/
 **/AGENTS.md
 AGENTS.md
 .apm
+
+# .NET build artifacts
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.user
+*.suo
+*.userprefs
+.vs/
+.vscode/settings.json
+*.swp
+*~
+.DS_Store

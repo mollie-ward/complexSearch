@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="VehicleSearch.Agents/VehicleSearch.Agents.csproj" />
+  <Project Path="VehicleSearch.Api/VehicleSearch.Api.csproj" />
+  <Project Path="VehicleSearch.Core/VehicleSearch.Core.csproj" />
+  <Project Path="VehicleSearch.Infrastructure/VehicleSearch.Infrastructure.csproj" />
+</Solution>
