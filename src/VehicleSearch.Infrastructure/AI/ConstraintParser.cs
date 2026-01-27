@@ -63,7 +63,7 @@ public class ConstraintParser
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _operatorInference = operatorInference ?? throw new ArgumentNullException(nameof(operatorInference));
-        _qualitativeConfig = qualitativeConfig?.Value ?? throw new ArgumentNullException(nameof(qualitativeConfig));
+        _qualitativeConfig = qualitativeConfig?.Value ?? new QualitativeTermsConfig(); // Use empty config if not provided
     }
 
     /// <summary>
