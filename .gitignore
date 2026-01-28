@@ -40,3 +40,20 @@ node_modules/
 # Aspire
 .aspire/
 
+# Test artifacts and reports
+test-results/
+TestResults/
+coverage/
+coverage-report/
+playwright-report/
+*.trx
+*.coverage
+*.coveragexml
+BenchmarkDotNet.Artifacts/
+
+# Playwright
+.auth/
+
+# k6 results
+k6-results/
+
