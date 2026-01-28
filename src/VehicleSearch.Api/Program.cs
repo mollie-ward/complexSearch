@@ -80,6 +80,11 @@ builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.SemanticSearchExe
 builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.HybridSearchExecutor>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISearchOrchestratorService, VehicleSearch.Infrastructure.Search.SearchOrchestratorService>();
 
+// Register Result Ranking services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IResultRankingService, VehicleSearch.Infrastructure.Search.ResultRankingService>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.RRFMerger>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.DiversityEnhancer>();
+
 // Register Query Understanding services
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IIntentClassifier, VehicleSearch.Infrastructure.AI.IntentClassifier>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEntityExtractor, VehicleSearch.Infrastructure.AI.EntityExtractor>();
