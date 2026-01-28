@@ -18,6 +18,11 @@ public class VehicleResult
     public double Score { get; set; }
 
     /// <summary>
+    /// Gets or sets the detailed score breakdown from different search approaches.
+    /// </summary>
+    public SearchScoreBreakdown? ScoreBreakdown { get; set; }
+
+    /// <summary>
     /// Gets or sets highlights or snippets from the search.
     /// </summary>
     public List<string> Highlights { get; set; } = new();
