@@ -86,17 +86,9 @@ public class ConceptualMapperService : IConceptualMapperService
         var conceptualFactors = await ComputeConceptualFactors(vehicle, query);
         components.AddRange(conceptualFactors);
 
-        // 3. Compute semantic similarity (weight 0.3)
-        // Note: This would require access to IEmbeddingService, which we'll add later
-        // For now, we'll add a placeholder
-        var semanticComponent = new ScoreComponent
-        {
-            Factor = "Semantic Similarity",
-            Score = 0.5, // Placeholder
-            Weight = 0.3,
-            Reason = "Description semantically similar (placeholder)"
-        };
-        components.Add(semanticComponent);
+        // 3. Semantic similarity is not yet implemented
+        // When implemented, it should have a weight of 0.3
+        // For now, we don't include it to avoid skewing scores with placeholder data
 
         // Calculate overall score
         foreach (var component in components)
@@ -179,7 +171,7 @@ public class ConceptualMapperService : IConceptualMapperService
     /// </summary>
     private ScoreComponent? ComputePriceMatchScore(Vehicle vehicle, ExtractedEntity entity)
     {
-        if (!double.TryParse(entity.Value, out var targetPrice))
+        if (!double.TryParse(entity.Value, out var targetPrice) || targetPrice <= 0)
             return null;
 
         // Simple score based on price proximity

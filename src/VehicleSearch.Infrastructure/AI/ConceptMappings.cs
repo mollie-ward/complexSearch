@@ -21,23 +21,16 @@ public static class ConceptMappings
                 new AttributeWeight
                 {
                     Attribute = "mileage",
-                    Weight = 0.3,
+                    Weight = 0.4,
                     TargetValue = 60000,
                     ComparisonType = "less"
                 },
                 new AttributeWeight
                 {
                     Attribute = "serviceHistoryPresent",
-                    Weight = 0.3,
+                    Weight = 0.4,
                     TargetValue = true,
                     ComparisonType = "equals"
-                },
-                new AttributeWeight
-                {
-                    Attribute = "numberOfPreviousOwners",
-                    Weight = 0.2,
-                    TargetValue = 2,
-                    ComparisonType = "lessOrEqual"
                 },
                 new AttributeWeight
                 {
@@ -115,21 +108,14 @@ public static class ConceptMappings
                 new AttributeWeight
                 {
                     Attribute = "numberOfDoors",
-                    Weight = 0.3,
-                    TargetValue = 5,
-                    ComparisonType = "greaterOrEqual"
-                },
-                new AttributeWeight
-                {
-                    Attribute = "numberOfSeats",
-                    Weight = 0.3,
+                    Weight = 0.5,
                     TargetValue = 5,
                     ComparisonType = "greaterOrEqual"
                 },
                 new AttributeWeight
                 {
                     Attribute = "bodyType",
-                    Weight = 0.4,
+                    Weight = 0.5,
                     TargetValue = new[] { "SUV", "MPV", "Estate", "Hatchback" },
                     ComparisonType = "in"
                 }

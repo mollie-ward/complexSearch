@@ -317,10 +317,10 @@ public class SimilarityScorer
             "features" => vehicle.Features.ToArray(),
             "description" => vehicle.Description,
             "servicehistorypresent" => vehicle.ServiceHistoryPresent,
-            "numberofpreviousowners" => null, // Not in Vehicle entity
-            "numberofseats" => null, // Not in Vehicle entity
             "motexpirydate" => vehicle.MotExpiryDate != null 
-                ? (DateTime.Now - vehicle.MotExpiryDate.Value).Days * -1 // Days until expiry
+                // Calculate days until expiry (positive if in future, negative if expired)
+                // Note: This uses DateTime.UtcNow for consistency. In production, consider using ISystemClock
+                ? (vehicle.MotExpiryDate.Value.Date - DateTime.UtcNow.Date).Days
                 : (object?)null,
             _ => null
         };

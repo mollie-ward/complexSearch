@@ -142,14 +142,19 @@ public static class SearchEndpoints
                     overallScore = score.OverallScore,
                     componentScores = score.ComponentScores,
                     matchingAttributes = score.MatchingAttributes,
-                    mismatchingAttributes = score.MismatchingAttributes
+                    mismatchingAttributes = score.MismatchingAttributes,
+                    descriptionBoost = score.DescriptionBoost
                 });
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
             {
                 return Results.Problem(
                     title: "Failed to compute similarity",
-                    detail: ex.Message,
+                    detail: "An unexpected error occurred while computing similarity score",
                     statusCode: 500);
             }
         })
@@ -188,11 +193,15 @@ public static class SearchEndpoints
 
                 return Results.Ok(explanation);
             }
-            catch (Exception ex)
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception)
             {
                 return Results.Problem(
                     title: "Failed to generate explanation",
-                    detail: ex.Message,
+                    detail: "An unexpected error occurred while generating explanation",
                     statusCode: 500);
             }
         })

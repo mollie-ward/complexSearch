@@ -72,7 +72,7 @@ public class ConceptualMapperServiceTests
         result.Should().NotBeNull();
         result!.Concept.Should().Be("reliable");
         result.AttributeWeights.Should().NotBeEmpty();
-        result.AttributeWeights.Should().HaveCount(4);
+        result.AttributeWeights.Should().HaveCount(3); // mileage, serviceHistory, motExpiry
         result.PositiveIndicators.Should().NotBeEmpty();
         result.NegativeIndicators.Should().NotBeEmpty();
     }
@@ -98,7 +98,7 @@ public class ConceptualMapperServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.Concept.Should().Be("family car");
-        result.AttributeWeights.Should().HaveCount(3);
+        result.AttributeWeights.Should().HaveCount(2); // numberOfDoors, bodyType
     }
 
     [Fact]
