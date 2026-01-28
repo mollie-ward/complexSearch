@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using VehicleSearch.Core.Models;
+using System.Globalization;
 
 namespace VehicleSearch.Infrastructure.AI;
 
@@ -315,7 +316,7 @@ public class ConflictResolver
             float f => SetResult(f, out result),
             double d => SetResult(d, out result),
             decimal m => SetResult((double)m, out result),
-            string s => double.TryParse(s, out result),
+            string s => double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out result),
             _ => false
         };
 

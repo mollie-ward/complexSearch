@@ -137,8 +137,7 @@ public class ODataTranslator
 
     private string FormatContainsExpression(SearchConstraint constraint)
     {
-        // For string fields, use search.ismatch
-        // For collection fields, use lambda expressions
+        // Use search.ismatch for full-text search on string fields
         var value = constraint.Value?.ToString() ?? string.Empty;
         value = value.Replace("'", "''"); // Escape single quotes
         return $"search.ismatch('{value}', '{constraint.FieldName}')";
@@ -151,8 +150,17 @@ public class ODataTranslator
             throw new ArgumentException("In operator requires an array of values", nameof(constraint));
         }
 
-        var formattedValues = values.Select(v => FormatValue(v)).ToList();
-        var valueList = string.Join(",", formattedValues.Select(v => v.Trim('\'')));
+        // Format each value and escape commas and quotes
+        var formattedValues = values.Select(v => {
+            var formatted = v?.ToString() ?? string.Empty;
+            // Escape single quotes for OData, but don't wrap in quotes yet
+            formatted = formatted.Replace("'", "''");
+            // Escape commas by replacing with a placeholder or using URL encoding
+            formatted = formatted.Replace(",", "%2C");
+            return formatted;
+        }).ToList();
+        
+        var valueList = string.Join(",", formattedValues);
         return $"search.in({constraint.FieldName}, '{valueList}', ',')";
     }
 
@@ -167,8 +175,8 @@ public class ODataTranslator
             bool b => b.ToString().ToLower(),
             int or long or short or byte => value.ToString()!,
             float or double or decimal => value.ToString()!,
-            DateTime dt => $"'{dt:yyyy-MM-ddTHH:mm:ssZ}'",
-            DateTimeOffset dto => $"'{dto:yyyy-MM-ddTHH:mm:ssZ}'",
+            DateTime dt => $"'{dt.ToUniversalTime():yyyy-MM-ddTHH:mm:ssZ}'",
+            DateTimeOffset dto => $"'{dto.UtcDateTime:yyyy-MM-ddTHH:mm:ssZ}'",
             _ => $"'{value.ToString()?.Replace("'", "''")}'"
         };
     }

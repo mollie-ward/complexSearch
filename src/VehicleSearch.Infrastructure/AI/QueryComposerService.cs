@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using VehicleSearch.Core.Interfaces;
 using VehicleSearch.Core.Models;
+using System.Globalization;
 
 namespace VehicleSearch.Infrastructure.AI;
 
@@ -12,6 +13,18 @@ public class QueryComposerService : IQueryComposerService
     private readonly ILogger<QueryComposerService> _logger;
     private readonly ConflictResolver _conflictResolver;
     private readonly ODataTranslator _odataTranslator;
+
+    // Priority thresholds
+    private const double HighPriorityThreshold = 0.8;
+    private const double MediumPriorityThreshold = 0.5;
+    private const double KeyFieldPriority = 1.0;
+    private const double ExactMatchPriority = 0.9;
+    private const double RangePriority = 0.6;
+    private const double SemanticPriority = 0.3;
+    private const double DefaultPriority = 0.5;
+
+    // Query complexity threshold
+    private const int ComplexQueryThreshold = 3;
 
     public QueryComposerService(
         ILogger<QueryComposerService> logger,
@@ -171,7 +184,7 @@ public class QueryComposerService : IQueryComposerService
             return QueryType.MultiModal;
 
         // Complex: mixed constraint types including composites
-        if (hasComposite || (hasExact && hasRange && constraints.Count > 3))
+        if (hasComposite || (hasExact && hasRange && constraints.Count > ComplexQueryThreshold))
             return QueryType.Complex;
 
         // Filtered: multiple exact/range constraints
@@ -196,9 +209,9 @@ public class QueryComposerService : IQueryComposerService
         // Check for OR keywords in unmappable terms
         if (mappedQuery.UnmappableTerms != null)
         {
-            var orKeywords = new[] { "or", "either", "alternatively" };
+            var orKeywords = new[] { "or", "either" };
             return mappedQuery.UnmappableTerms.Any(term => 
-                orKeywords.Contains(term.ToLower()));
+                orKeywords.Contains(term, StringComparer.OrdinalIgnoreCase));
         }
 
         return false;
@@ -233,9 +246,9 @@ public class QueryComposerService : IQueryComposerService
             foreach (var constraint in constraints)
             {
                 var priority = GetPriority(constraint);
-                if (priority >= 0.8)
+                if (priority >= HighPriorityThreshold)
                     highPriority.Add(constraint);
-                else if (priority >= 0.5)
+                else if (priority >= MediumPriorityThreshold)
                     mediumPriority.Add(constraint);
                 else
                     lowPriority.Add(constraint);
@@ -247,7 +260,7 @@ public class QueryComposerService : IQueryComposerService
                 {
                     Constraints = highPriority,
                     Operator = LogicalOperator.And,
-                    Priority = 1.0
+                    Priority = KeyFieldPriority
                 });
             }
 
@@ -257,7 +270,7 @@ public class QueryComposerService : IQueryComposerService
                 {
                     Constraints = mediumPriority,
                     Operator = LogicalOperator.And,
-                    Priority = 0.6
+                    Priority = RangePriority
                 });
             }
 
@@ -267,7 +280,7 @@ public class QueryComposerService : IQueryComposerService
                 {
                     Constraints = lowPriority,
                     Operator = LogicalOperator.And,
-                    Priority = 0.3
+                    Priority = SemanticPriority
                 });
             }
         }
@@ -279,7 +292,7 @@ public class QueryComposerService : IQueryComposerService
             {
                 Constraints = constraints,
                 Operator = LogicalOperator.And,
-                Priority = 1.0
+                Priority = KeyFieldPriority
             });
         }
 
@@ -292,28 +305,28 @@ public class QueryComposerService : IQueryComposerService
         if (constraint.Type == ConstraintType.Exact && 
             (constraint.FieldName == "make" || constraint.FieldName == "model"))
         {
-            return 1.0;
+            return KeyFieldPriority;
         }
 
         // High priority: explicit exact matches
         if (constraint.Operator == ConstraintOperator.Equals)
         {
-            return 0.9;
+            return ExactMatchPriority;
         }
 
         // Medium priority: range filters
         if (constraint.Type == ConstraintType.Range)
         {
-            return 0.6;
+            return RangePriority;
         }
 
         // Low priority: semantic/qualitative terms
         if (constraint.Type == ConstraintType.Semantic)
         {
-            return 0.3;
+            return SemanticPriority;
         }
 
         // Default medium priority
-        return 0.5;
+        return DefaultPriority;
     }
 }
