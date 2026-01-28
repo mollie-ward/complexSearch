@@ -78,7 +78,7 @@ public class Frd001_NaturalLanguageUnderstandingTests
 public class Frd002_SemanticSearchTests
 {
     [Fact]
-    public async Task QualitativeTerms_UnderstoodSemanticly()
+    public async Task QualitativeTerms_UnderstoodSemantically()
     {
         // Terms: "reliable", "economical", "spacious", "sporty", "luxury"
         
