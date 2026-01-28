@@ -262,6 +262,173 @@ public static class QueryEndpoints
         .WithName("ComposeQuery")
         .WithSummary("Compose complex search query")
         .WithDescription("Composes a complex search query from mapped constraints with logical operators and conflict resolution");
+
+        // POST /api/v1/query/resolve
+        group.MapPost("/resolve", async (
+            ResolveReferencesRequest request,
+            [FromServices] IReferenceResolverService referenceResolver,
+            [FromServices] IConversationSessionService sessionService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Query))
+                {
+                    return Results.BadRequest(new { error = "Query cannot be empty" });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.SessionId))
+                {
+                    return Results.BadRequest(new { error = "SessionId is required" });
+                }
+
+                // Get the conversation session
+                var session = await sessionService.GetSessionAsync(request.SessionId, cancellationToken);
+
+                // Resolve references
+                var resolvedQuery = await referenceResolver.ResolveReferencesAsync(
+                    request.Query, 
+                    session, 
+                    cancellationToken);
+
+                var response = new ResolveReferencesResponse
+                {
+                    OriginalQuery = resolvedQuery.OriginalQuery,
+                    ResolvedQuery = resolvedQuery.ResolvedQueryText,
+                    ResolvedReferences = resolvedQuery.ResolvedReferences.Select(r => new ReferenceResponse
+                    {
+                        ReferenceText = r.ReferenceText,
+                        Type = r.Type.ToString(),
+                        ResolvedValue = r.ResolvedValue?.ToString() ?? string.Empty,
+                        Position = r.Position
+                    }).ToList(),
+                    ResolvedValues = resolvedQuery.ResolvedValues,
+                    HasUnresolvedReferences = resolvedQuery.HasUnresolvedReferences,
+                    UnresolvedMessage = resolvedQuery.UnresolvedMessage
+                };
+
+                return Results.Ok(response);
+            }
+            catch (VehicleSearch.Core.Exceptions.SessionNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to resolve references",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("ResolveReferences")
+        .WithSummary("Resolve references in query")
+        .WithDescription("Resolves pronouns and references in a query using conversation context");
+
+        // POST /api/v1/query/refine
+        group.MapPost("/refine", async (
+            RefineQueryRequest request,
+            [FromServices] IReferenceResolverService referenceResolver,
+            [FromServices] IConversationSessionService sessionService,
+            [FromServices] IQueryUnderstandingService queryService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Query))
+                {
+                    return Results.BadRequest(new { error = "Query cannot be empty" });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.SessionId))
+                {
+                    return Results.BadRequest(new { error = "SessionId is required" });
+                }
+
+                // Get the conversation session
+                var session = await sessionService.GetSessionAsync(request.SessionId, cancellationToken);
+
+                if (session.CurrentSearchState == null)
+                {
+                    return Results.BadRequest(new { error = "No previous search state found in session" });
+                }
+
+                // Parse the new query
+                var parsedQuery = await queryService.ParseQueryAsync(request.Query, null, cancellationToken);
+
+                // Refine the query with previous context
+                var composedQuery = await referenceResolver.RefineQueryAsync(
+                    parsedQuery, 
+                    session.CurrentSearchState, 
+                    cancellationToken);
+
+                // Determine which constraints were added, updated, or removed
+                var previousFields = session.CurrentSearchState.ActiveFilters.Keys.ToHashSet();
+                var currentFields = new HashSet<string>();
+                foreach (var group in composedQuery.ConstraintGroups)
+                {
+                    foreach (var constraint in group.Constraints)
+                    {
+                        currentFields.Add(constraint.FieldName);
+                    }
+                }
+
+                var addedConstraints = currentFields.Except(previousFields).ToList();
+                var updatedConstraints = currentFields.Intersect(previousFields).ToList();
+                var removedConstraints = previousFields.Except(currentFields).ToList();
+
+                var response = new RefineQueryResponse
+                {
+                    ComposedQuery = new ComposeQueryResponse
+                    {
+                        Type = composedQuery.Type.ToString(),
+                        ConstraintGroups = composedQuery.ConstraintGroups.Select(g => new ConstraintGroupResponse
+                        {
+                            Constraints = g.Constraints.Select(c => new ConstraintResponse
+                            {
+                                FieldName = c.FieldName,
+                                Operator = c.Operator.ToString(),
+                                Value = c.Value,
+                                Type = c.Type.ToString()
+                            }).ToList(),
+                            Operator = g.Operator.ToString(),
+                            Priority = g.Priority
+                        }).ToList(),
+                        GroupOperator = composedQuery.GroupOperator.ToString(),
+                        Warnings = composedQuery.Warnings,
+                        HasConflicts = composedQuery.HasConflicts,
+                        ODataFilter = composedQuery.ODataFilter
+                    },
+                    AddedConstraints = addedConstraints,
+                    UpdatedConstraints = updatedConstraints,
+                    RemovedConstraints = removedConstraints
+                };
+
+                return Results.Ok(response);
+            }
+            catch (VehicleSearch.Core.Exceptions.SessionNotFoundException ex)
+            {
+                return Results.NotFound(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to refine query",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("RefineQuery")
+        .WithSummary("Refine query with previous context")
+        .WithDescription("Refines a query by combining new constraints with previous search state");
     }
 
     /// <summary>
@@ -466,5 +633,125 @@ public static class QueryEndpoints
         /// The priority of this constraint group.
         /// </summary>
         public double Priority { get; init; }
+    }
+
+    /// <summary>
+    /// Request model for resolving references.
+    /// </summary>
+    public record ResolveReferencesRequest
+    {
+        /// <summary>
+        /// The user query containing references.
+        /// </summary>
+        public string Query { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The session identifier for conversation context.
+        /// </summary>
+        public string SessionId { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Response model for resolved references.
+    /// </summary>
+    public record ResolveReferencesResponse
+    {
+        /// <summary>
+        /// The original query.
+        /// </summary>
+        public string OriginalQuery { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The query with references replaced.
+        /// </summary>
+        public string ResolvedQuery { get; init; } = string.Empty;
+
+        /// <summary>
+        /// List of resolved references.
+        /// </summary>
+        public List<ReferenceResponse> ResolvedReferences { get; init; } = new();
+
+        /// <summary>
+        /// Dictionary of resolved constraint values.
+        /// </summary>
+        public Dictionary<string, object> ResolvedValues { get; init; } = new();
+
+        /// <summary>
+        /// Flag indicating if there are unresolved references.
+        /// </summary>
+        public bool HasUnresolvedReferences { get; init; }
+
+        /// <summary>
+        /// Message for unresolved references.
+        /// </summary>
+        public string? UnresolvedMessage { get; init; }
+    }
+
+    /// <summary>
+    /// Response model for a reference.
+    /// </summary>
+    public record ReferenceResponse
+    {
+        /// <summary>
+        /// The reference text.
+        /// </summary>
+        public string ReferenceText { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The reference type.
+        /// </summary>
+        public string Type { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The resolved value.
+        /// </summary>
+        public string ResolvedValue { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The position in the query.
+        /// </summary>
+        public int Position { get; init; }
+    }
+
+    /// <summary>
+    /// Request model for refining a query.
+    /// </summary>
+    public record RefineQueryRequest
+    {
+        /// <summary>
+        /// The new query to refine with.
+        /// </summary>
+        public string Query { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The session identifier for conversation context.
+        /// </summary>
+        public string SessionId { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Response model for refined query.
+    /// </summary>
+    public record RefineQueryResponse
+    {
+        /// <summary>
+        /// The composed query with merged constraints.
+        /// </summary>
+        public ComposeQueryResponse ComposedQuery { get; init; } = null!;
+
+        /// <summary>
+        /// List of newly added constraint field names.
+        /// </summary>
+        public List<string> AddedConstraints { get; init; } = new();
+
+        /// <summary>
+        /// List of updated constraint field names.
+        /// </summary>
+        public List<string> UpdatedConstraints { get; init; } = new();
+
+        /// <summary>
+        /// List of removed constraint field names.
+        /// </summary>
+        public List<string> RemovedConstraints { get; init; } = new();
     }
 }
