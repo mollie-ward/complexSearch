@@ -5,7 +5,8 @@
 **Type:** Testing & Integration  
 **Priority:** Critical  
 **Estimated Complexity:** High  
-**FRD Reference:** All FRDs (validation)
+**FRD Reference:** All FRDs (validation)  
+**GitHub Issue:** [#41](https://github.com/mollie-ward/complexSearch/issues/41)
 
 ---
 
