@@ -56,9 +56,23 @@ builder.Services.AddSingleton<VehicleSearch.Infrastructure.Search.AzureSearchCli
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISearchIndexService, VehicleSearch.Infrastructure.Search.SearchIndexService>();
 
 // Register Azure OpenAI and Embedding services
-builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEmbeddingService, VehicleSearch.Infrastructure.AI.EmbeddingService>();
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.AI.EmbeddingService>();
+builder.Services.AddMemoryCache(options =>
+{
+    options.SizeLimit = 1000; // Maximum 1000 cached embeddings
+});
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEmbeddingService>(sp =>
+{
+    var innerService = sp.GetRequiredService<VehicleSearch.Infrastructure.AI.EmbeddingService>();
+    var cache = sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+    var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<VehicleSearch.Infrastructure.AI.CachedEmbeddingService>>();
+    return new VehicleSearch.Infrastructure.AI.CachedEmbeddingService(innerService, cache, logger);
+});
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleIndexingService, VehicleSearch.Infrastructure.Search.VehicleIndexingService>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleRetrievalService, VehicleSearch.Infrastructure.Search.VehicleRetrievalService>();
+
+// Register Semantic Search services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISemanticSearchService, VehicleSearch.Infrastructure.Search.SemanticSearchService>();
 
 // Register Query Understanding services
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IIntentClassifier, VehicleSearch.Infrastructure.AI.IntentClassifier>();
@@ -120,6 +134,7 @@ app.MapHealthEndpoints();
 app.MapKnowledgeBaseEndpoints();
 app.MapVehiclesEndpoints();
 app.MapQueryEndpoints();
+app.MapSearchEndpoints();
 
 // Run the application
 try
