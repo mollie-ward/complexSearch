@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using VehicleSearch.Core.Entities;
 using VehicleSearch.Core.Interfaces;
 using VehicleSearch.Core.Models;
 
@@ -299,6 +300,138 @@ public static class SearchEndpoints
         .WithName("ExplainRelevance")
         .WithSummary("Generate explanation for why a vehicle matched a query")
         .WithDescription("Provides an explainable relevance score with detailed breakdown");
+
+        // POST /api/v1/search/rerank
+        group.MapPost("/rerank", async (
+            RerankRequest request,
+            [FromServices] IResultRankingService rankingService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (request.Results == null || !request.Results.Any())
+                {
+                    return Results.BadRequest(new { error = "Results list cannot be empty" });
+                }
+
+                if (request.Query == null)
+                {
+                    return Results.BadRequest(new { error = "Query is required for re-ranking" });
+                }
+
+                // Convert API request to service models
+                var vehicleResults = request.Results.Select(r => new VehicleResult
+                {
+                    Vehicle = new Vehicle
+                    {
+                        Id = r.VehicleId,
+                        Make = r.Vehicle.Make,
+                        Model = r.Vehicle.Model,
+                        Derivative = r.Vehicle.Derivative,
+                        Price = r.Vehicle.Price,
+                        Mileage = r.Vehicle.Mileage,
+                        BodyType = r.Vehicle.BodyType,
+                        EngineSize = r.Vehicle.EngineSize,
+                        FuelType = r.Vehicle.FuelType,
+                        TransmissionType = r.Vehicle.TransmissionType,
+                        Colour = r.Vehicle.Colour,
+                        NumberOfDoors = r.Vehicle.NumberOfDoors,
+                        RegistrationDate = r.Vehicle.RegistrationDate,
+                        Features = r.Vehicle.Features,
+                        ServiceHistoryPresent = r.Vehicle.ServiceHistoryPresent ?? false,
+                        NumberOfServices = r.Vehicle.NumberOfServices,
+                        LastServiceDate = r.Vehicle.LastServiceDate,
+                        MotExpiryDate = r.Vehicle.MotExpiryDate,
+                        Declarations = r.Vehicle.Declarations ?? new List<string>()
+                    },
+                    Score = r.RelevanceScore,
+                    ScoreBreakdown = r.ScoreBreakdown != null ? new SearchScoreBreakdown
+                    {
+                        ExactMatchScore = r.ScoreBreakdown.ExactMatchScore,
+                        SemanticScore = r.ScoreBreakdown.SemanticScore,
+                        KeywordScore = r.ScoreBreakdown.KeywordScore,
+                        FinalScore = r.ScoreBreakdown.FinalScore
+                    } : null
+                }).ToList();
+
+                // Re-rank using the specified strategy or default
+                List<VehicleResult> rerankedResults;
+                if (request.Strategy != null)
+                {
+                    var strategy = new RerankingStrategy
+                    {
+                        Approach = Enum.Parse<RerankingApproach>(request.Strategy.Approach, ignoreCase: true),
+                        FactorWeights = request.Strategy.FactorWeights?.ToDictionary(
+                            kvp => Enum.Parse<RankingFactor>(kvp.Key, ignoreCase: true),
+                            kvp => kvp.Value) ?? new Dictionary<RankingFactor, double>(),
+                        ApplyDiversity = request.Strategy.ApplyDiversity ?? true,
+                        MaxPerMake = request.Strategy.MaxPerMake ?? 3,
+                        MaxPerModel = request.Strategy.MaxPerModel ?? 2
+                    };
+
+                    rerankedResults = await rankingService.RerankResultsAsync(
+                        vehicleResults,
+                        strategy,
+                        request.Query,
+                        cancellationToken);
+                }
+                else
+                {
+                    rerankedResults = await rankingService.RankResultsAsync(
+                        vehicleResults,
+                        request.Query,
+                        cancellationToken);
+                }
+
+                // Convert back to API response
+                var response = new RerankResponse
+                {
+                    Results = rerankedResults.Select(r => new VehicleSearchResult
+                    {
+                        Vehicle = new VehicleResponse
+                        {
+                            Make = r.Vehicle.Make,
+                            Model = r.Vehicle.Model,
+                            Derivative = r.Vehicle.Derivative,
+                            Price = r.Vehicle.Price,
+                            Mileage = r.Vehicle.Mileage,
+                            BodyType = r.Vehicle.BodyType,
+                            EngineSize = r.Vehicle.EngineSize,
+                            FuelType = r.Vehicle.FuelType,
+                            TransmissionType = r.Vehicle.TransmissionType,
+                            Colour = r.Vehicle.Colour,
+                            NumberOfDoors = r.Vehicle.NumberOfDoors,
+                            RegistrationDate = r.Vehicle.RegistrationDate,
+                            Features = r.Vehicle.Features
+                        },
+                        RelevanceScore = r.Score,
+                        ScoreBreakdown = r.ScoreBreakdown != null ? new ScoreBreakdownResponse
+                        {
+                            ExactMatchScore = r.ScoreBreakdown.ExactMatchScore,
+                            SemanticScore = r.ScoreBreakdown.SemanticScore,
+                            KeywordScore = r.ScoreBreakdown.KeywordScore,
+                            FinalScore = r.ScoreBreakdown.FinalScore
+                        } : null
+                    }).ToList()
+                };
+
+                return Results.Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to re-rank results",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("RerankResults")
+        .WithSummary("Re-rank search results using advanced ranking algorithms")
+        .WithDescription("Applies weighted scoring, business rules, and diversity enhancement to improve result relevance");
     }
 
     /// <summary>
@@ -601,5 +734,190 @@ public static class SearchEndpoints
         /// Gets or sets the final score.
         /// </summary>
         public double FinalScore { get; init; }
+    }
+
+    /// <summary>
+    /// Request model for re-ranking results.
+    /// </summary>
+    public record RerankRequest
+    {
+        /// <summary>
+        /// Gets or sets the results to re-rank.
+        /// </summary>
+        public List<RerankVehicleResult> Results { get; init; } = new();
+
+        /// <summary>
+        /// Gets or sets the composed query for context.
+        /// </summary>
+        public ComposedQuery Query { get; init; } = null!;
+
+        /// <summary>
+        /// Gets or sets the optional re-ranking strategy.
+        /// </summary>
+        public RerankStrategyRequest? Strategy { get; init; }
+    }
+
+    /// <summary>
+    /// Response model for re-ranking results.
+    /// </summary>
+    public record RerankResponse
+    {
+        /// <summary>
+        /// Gets or sets the re-ranked results.
+        /// </summary>
+        public List<VehicleSearchResult> Results { get; init; } = new();
+    }
+
+    /// <summary>
+    /// Vehicle result for re-ranking request.
+    /// </summary>
+    public record RerankVehicleResult
+    {
+        /// <summary>
+        /// Gets or sets the vehicle ID.
+        /// </summary>
+        public string VehicleId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the vehicle details.
+        /// </summary>
+        public RerankVehicleData Vehicle { get; init; } = null!;
+
+        /// <summary>
+        /// Gets or sets the current relevance score.
+        /// </summary>
+        public double RelevanceScore { get; init; }
+
+        /// <summary>
+        /// Gets or sets the score breakdown.
+        /// </summary>
+        public ScoreBreakdownResponse? ScoreBreakdown { get; init; }
+    }
+
+    /// <summary>
+    /// Vehicle data for re-ranking request.
+    /// </summary>
+    public record RerankVehicleData
+    {
+        /// <summary>
+        /// Gets or sets the make.
+        /// </summary>
+        public string Make { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the model.
+        /// </summary>
+        public string Model { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the derivative.
+        /// </summary>
+        public string Derivative { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the price.
+        /// </summary>
+        public decimal Price { get; init; }
+
+        /// <summary>
+        /// Gets or sets the mileage.
+        /// </summary>
+        public int Mileage { get; init; }
+
+        /// <summary>
+        /// Gets or sets the body type.
+        /// </summary>
+        public string BodyType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the engine size.
+        /// </summary>
+        public decimal EngineSize { get; init; }
+
+        /// <summary>
+        /// Gets or sets the fuel type.
+        /// </summary>
+        public string FuelType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the transmission type.
+        /// </summary>
+        public string TransmissionType { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the colour.
+        /// </summary>
+        public string Colour { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the number of doors.
+        /// </summary>
+        public int? NumberOfDoors { get; init; }
+
+        /// <summary>
+        /// Gets or sets the registration date.
+        /// </summary>
+        public DateTime? RegistrationDate { get; init; }
+
+        /// <summary>
+        /// Gets or sets the features.
+        /// </summary>
+        public List<string> Features { get; init; } = new();
+
+        /// <summary>
+        /// Gets or sets whether service history is present.
+        /// </summary>
+        public bool? ServiceHistoryPresent { get; init; }
+
+        /// <summary>
+        /// Gets or sets the number of services.
+        /// </summary>
+        public int? NumberOfServices { get; init; }
+
+        /// <summary>
+        /// Gets or sets the last service date.
+        /// </summary>
+        public DateTime? LastServiceDate { get; init; }
+
+        /// <summary>
+        /// Gets or sets the MOT expiry date.
+        /// </summary>
+        public DateTime? MotExpiryDate { get; init; }
+
+        /// <summary>
+        /// Gets or sets the declarations.
+        /// </summary>
+        public List<string>? Declarations { get; init; }
+    }
+
+    /// <summary>
+    /// Re-ranking strategy request.
+    /// </summary>
+    public record RerankStrategyRequest
+    {
+        /// <summary>
+        /// Gets or sets the approach (e.g., "WeightedScore", "BusinessRules", "Hybrid").
+        /// </summary>
+        public string Approach { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the factor weights (e.g., {"SemanticRelevance": 0.4, "ExactMatchCount": 0.3}).
+        /// </summary>
+        public Dictionary<string, double>? FactorWeights { get; init; }
+
+        /// <summary>
+        /// Gets or sets whether to apply diversity enhancement.
+        /// </summary>
+        public bool? ApplyDiversity { get; init; }
+
+        /// <summary>
+        /// Gets or sets the maximum vehicles per make.
+        /// </summary>
+        public int? MaxPerMake { get; init; }
+
+        /// <summary>
+        /// Gets or sets the maximum vehicles per model.
+        /// </summary>
+        public int? MaxPerModel { get; init; }
     }
 }
