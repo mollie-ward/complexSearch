@@ -74,6 +74,12 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IVehicleRetrievalServic
 // Register Semantic Search services
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISemanticSearchService, VehicleSearch.Infrastructure.Search.SemanticSearchService>();
 
+// Register Search Orchestration services
+builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.ExactSearchExecutor>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.SemanticSearchExecutor>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.Search.HybridSearchExecutor>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISearchOrchestratorService, VehicleSearch.Infrastructure.Search.SearchOrchestratorService>();
+
 // Register Query Understanding services
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IIntentClassifier, VehicleSearch.Infrastructure.AI.IntentClassifier>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IEntityExtractor, VehicleSearch.Infrastructure.AI.EntityExtractor>();

@@ -19,6 +19,97 @@ public static class SearchEndpoints
             .WithTags("Search")
             .WithOpenApi();
 
+        // POST /api/v1/search
+        group.MapPost("", async (
+            OrchestratedSearchRequest request,
+            [FromServices] IQueryComposerService queryComposer,
+            [FromServices] ISearchOrchestratorService searchOrchestrator,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (request.ComposedQuery == null)
+                {
+                    return Results.BadRequest(new { error = "ComposedQuery is required" });
+                }
+
+                if (request.MaxResults <= 0 || request.MaxResults > 100)
+                {
+                    return Results.BadRequest(new { error = "MaxResults must be between 1 and 100" });
+                }
+
+                // Determine strategy
+                var strategy = await searchOrchestrator.DetermineStrategyAsync(
+                    request.ComposedQuery,
+                    cancellationToken);
+
+                // Execute search
+                var results = await searchOrchestrator.ExecuteSearchAsync(
+                    request.ComposedQuery,
+                    strategy,
+                    request.MaxResults,
+                    cancellationToken);
+
+                // Convert to API response
+                var response = new OrchestratedSearchResponse
+                {
+                    Results = results.Results.Select(r => new VehicleSearchResult
+                    {
+                        Vehicle = new VehicleResponse
+                        {
+                            Make = r.Vehicle.Make,
+                            Model = r.Vehicle.Model,
+                            Derivative = r.Vehicle.Derivative,
+                            Price = r.Vehicle.Price,
+                            Mileage = r.Vehicle.Mileage,
+                            BodyType = r.Vehicle.BodyType,
+                            EngineSize = r.Vehicle.EngineSize,
+                            FuelType = r.Vehicle.FuelType,
+                            TransmissionType = r.Vehicle.TransmissionType,
+                            Colour = r.Vehicle.Colour,
+                            NumberOfDoors = r.Vehicle.NumberOfDoors,
+                            RegistrationDate = r.Vehicle.RegistrationDate,
+                            Features = r.Vehicle.Features
+                        },
+                        RelevanceScore = r.Score,
+                        ScoreBreakdown = r.ScoreBreakdown != null ? new ScoreBreakdownResponse
+                        {
+                            ExactMatchScore = r.ScoreBreakdown.ExactMatchScore,
+                            SemanticScore = r.ScoreBreakdown.SemanticScore,
+                            KeywordScore = r.ScoreBreakdown.KeywordScore,
+                            FinalScore = r.ScoreBreakdown.FinalScore
+                        } : null
+                    }).ToList(),
+                    TotalCount = results.TotalCount,
+                    Strategy = new SearchStrategyResponse
+                    {
+                        Type = results.Strategy.Type.ToString(),
+                        Approaches = results.Strategy.Approaches.Select(a => a.ToString()).ToList(),
+                        Weights = results.Strategy.Weights.ToDictionary(
+                            kvp => kvp.Key.ToString(),
+                            kvp => kvp.Value)
+                    },
+                    SearchDuration = $"{results.SearchDuration.TotalMilliseconds:F2}ms"
+                };
+
+                return Results.Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to perform search",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("OrchestrationSearch")
+        .WithSummary("Execute an orchestrated search with automatic strategy selection")
+        .WithDescription("Executes a search using the optimal combination of exact match, semantic search, and filtering based on query characteristics");
+
         // POST /api/v1/search/semantic
         group.MapPost("/semantic", async (
             SemanticSearchApiRequest request,
@@ -400,5 +491,115 @@ public static class SearchEndpoints
         /// Gets or sets the parsed query to explain.
         /// </summary>
         public ParsedQuery Query { get; init; } = null!;
+    }
+
+    /// <summary>
+    /// Request model for orchestrated search.
+    /// </summary>
+    public record OrchestratedSearchRequest
+    {
+        /// <summary>
+        /// Gets or sets the composed query with constraints.
+        /// </summary>
+        public ComposedQuery ComposedQuery { get; init; } = null!;
+
+        /// <summary>
+        /// Gets or sets the maximum number of results (1-100).
+        /// </summary>
+        public int MaxResults { get; init; } = 10;
+    }
+
+    /// <summary>
+    /// Response model for orchestrated search.
+    /// </summary>
+    public record OrchestratedSearchResponse
+    {
+        /// <summary>
+        /// Gets or sets the list of vehicle search results.
+        /// </summary>
+        public List<VehicleSearchResult> Results { get; init; } = new();
+
+        /// <summary>
+        /// Gets or sets the total count of results.
+        /// </summary>
+        public int TotalCount { get; init; }
+
+        /// <summary>
+        /// Gets or sets the search strategy used.
+        /// </summary>
+        public SearchStrategyResponse Strategy { get; init; } = null!;
+
+        /// <summary>
+        /// Gets or sets the search duration.
+        /// </summary>
+        public string SearchDuration { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Vehicle search result model.
+    /// </summary>
+    public record VehicleSearchResult
+    {
+        /// <summary>
+        /// Gets or sets the vehicle details.
+        /// </summary>
+        public VehicleResponse Vehicle { get; init; } = null!;
+
+        /// <summary>
+        /// Gets or sets the relevance score.
+        /// </summary>
+        public double RelevanceScore { get; init; }
+
+        /// <summary>
+        /// Gets or sets the score breakdown.
+        /// </summary>
+        public ScoreBreakdownResponse? ScoreBreakdown { get; init; }
+    }
+
+    /// <summary>
+    /// Search strategy response model.
+    /// </summary>
+    public record SearchStrategyResponse
+    {
+        /// <summary>
+        /// Gets or sets the strategy type.
+        /// </summary>
+        public string Type { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the list of approaches.
+        /// </summary>
+        public List<string> Approaches { get; init; } = new();
+
+        /// <summary>
+        /// Gets or sets the weights for each approach.
+        /// </summary>
+        public Dictionary<string, double> Weights { get; init; } = new();
+    }
+
+    /// <summary>
+    /// Score breakdown response model.
+    /// </summary>
+    public record ScoreBreakdownResponse
+    {
+        /// <summary>
+        /// Gets or sets the exact match score.
+        /// </summary>
+        public double ExactMatchScore { get; init; }
+
+        /// <summary>
+        /// Gets or sets the semantic score.
+        /// </summary>
+        public double SemanticScore { get; init; }
+
+        /// <summary>
+        /// Gets or sets the keyword score.
+        /// </summary>
+        public double KeywordScore { get; init; }
+
+        /// <summary>
+        /// Gets or sets the final score.
+        /// </summary>
+        public double FinalScore { get; init; }
     }
 }
