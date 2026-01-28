@@ -73,7 +73,8 @@ public class SafetyGuardrailMiddleware
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred during safety validation");
-                // Continue to next middleware - let exception handler deal with it
+                // Let the exception propagate to the exception handling middleware
+                throw;
             }
         }
 
@@ -107,7 +108,7 @@ public class SafetyGuardrailMiddleware
 
                 if (!string.IsNullOrWhiteSpace(body))
                 {
-                    var jsonDocument = JsonDocument.Parse(body);
+                    using var jsonDocument = JsonDocument.Parse(body);
                     if (jsonDocument.RootElement.TryGetProperty("query", out var queryElement))
                     {
                         return queryElement.GetString();
@@ -118,9 +119,10 @@ public class SafetyGuardrailMiddleware
                     }
                 }
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to extract query from request body");
+                _logger.LogWarning(ex, "Failed to parse JSON request body for query extraction");
+                // Return null to skip validation - malformed JSON will be caught by model validation
             }
         }
 

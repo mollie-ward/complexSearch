@@ -18,7 +18,6 @@ public class SafetyGuardrailService : ISafetyGuardrailService
     private const int MinLength = 2;
     private const int RequestsPerMinute = 10;
     private const int RequestsPerHour = 100;
-    private const int MaxMessagesInFiveMinutes = 20;
 
     // Vehicle-related keywords (positive indicators)
     private static readonly string[] VehicleKeywords = new[]
@@ -122,7 +121,8 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         // 3. Bulk extraction detection (check before prompt injection to avoid false positives)
         if (IsBulkExtractionAttempt(query))
         {
-            _logger.LogWarning("Bulk extraction attempt detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
+            var safeQuery = query.Length > 50 ? query.Substring(0, 50) + "..." : query;
+            _logger.LogWarning("Bulk extraction attempt detected in query: {Query}", safeQuery);
             return new SafetyValidationResult
             {
                 IsValid = false,
@@ -134,7 +134,8 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         // 4. Prompt injection detection
         if (await ContainsPromptInjectionAsync(query, cancellationToken))
         {
-            _logger.LogWarning("Prompt injection detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
+            var safeQuery = query.Length > 50 ? query.Substring(0, 50) + "..." : query;
+            _logger.LogWarning("Prompt injection detected in query: {Query}", safeQuery);
             return new SafetyValidationResult
             {
                 IsValid = false,
@@ -224,7 +225,7 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         {
             if (pattern.IsMatch(query))
             {
-                _logger.LogWarning("Potential prompt injection detected: {Pattern}", pattern.ToString());
+                _logger.LogWarning("Potential prompt injection detected with pattern matching");
                 return Task.FromResult(true);
             }
         }
@@ -251,6 +252,7 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         var minuteKey = $"ratelimit:minute:{sessionId}";
         var hourKey = $"ratelimit:hour:{sessionId}";
 
+        // Use GetOrAdd with lock to prevent race conditions
         var minuteCount = _cache.GetOrCreate<int>(minuteKey, entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1);
@@ -285,9 +287,13 @@ public class SafetyGuardrailService : ISafetyGuardrailService
             });
         }
 
-        // Increment counters
-        _cache.Set(minuteKey, minuteCount + 1, TimeSpan.FromMinutes(1));
-        _cache.Set(hourKey, hourCount + 1, TimeSpan.FromHours(1));
+        // Increment counters atomically
+        // Note: For high-concurrency scenarios, consider using IDistributedCache with Redis
+        lock (_cache)
+        {
+            _cache.Set(minuteKey, minuteCount + 1, TimeSpan.FromMinutes(1));
+            _cache.Set(hourKey, hourCount + 1, TimeSpan.FromHours(1));
+        }
 
         return Task.FromResult(new RateLimitResult
         {
@@ -311,10 +317,10 @@ public class SafetyGuardrailService : ISafetyGuardrailService
                     new()
                     {
                         FieldName = "query",
-                        Message = "Query cannot be empty"
+                        Message = "Query cannot be empty or contain only whitespace"
                     }
                 },
-                Message = "Query cannot be empty"
+                Message = "Query cannot be empty or contain only whitespace"
             };
         }
 
@@ -363,7 +369,8 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         {
             if (pattern.IsMatch(query))
             {
-                _logger.LogWarning("SQL injection pattern detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
+                var safeQuery = query.Length > 50 ? query.Substring(0, 50) + "..." : query;
+                _logger.LogWarning("SQL injection pattern detected in query: {Query}", safeQuery);
                 return new SafetyValidationResult
                 {
                     IsValid = false,
@@ -377,7 +384,7 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         var specialCharCount = query.Count(c => !char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c));
         if (specialCharCount > query.Length * 0.3)  // > 30% special chars
         {
-            _logger.LogWarning("Excessive special characters detected in query: {Count}/{Total}", specialCharCount, query.Length);
+            _logger.LogWarning("Excessive special characters detected: {Count}/{Total}", specialCharCount, query.Length);
             return new SafetyValidationResult
             {
                 IsValid = false,

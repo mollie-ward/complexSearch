@@ -61,7 +61,7 @@ public class SafetyGuardrailServiceTests : IDisposable
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Query cannot be empty");
+        result.Message.Should().Be("Query cannot be empty or contain only whitespace");
         result.Errors.Should().HaveCount(1);
     }
 
@@ -73,7 +73,7 @@ public class SafetyGuardrailServiceTests : IDisposable
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Message.Should().Be("Query cannot be empty");
+        result.Message.Should().Be("Query cannot be empty or contain only whitespace");
     }
 
     [Fact]
