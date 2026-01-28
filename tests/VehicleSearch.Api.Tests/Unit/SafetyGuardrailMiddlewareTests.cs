@@ -16,6 +16,7 @@ public class SafetyGuardrailMiddlewareTests
 {
     private readonly Mock<ILogger<SafetyGuardrailMiddleware>> _loggerMock;
     private readonly Mock<ISafetyGuardrailService> _safetyServiceMock;
+    private readonly Mock<IAbuseMonitoringService> _abuseMonitoringServiceMock;
     private readonly Mock<RequestDelegate> _nextMock;
     private readonly SafetyGuardrailMiddleware _middleware;
 
@@ -23,6 +24,7 @@ public class SafetyGuardrailMiddlewareTests
     {
         _loggerMock = new Mock<ILogger<SafetyGuardrailMiddleware>>();
         _safetyServiceMock = new Mock<ISafetyGuardrailService>();
+        _abuseMonitoringServiceMock = new Mock<IAbuseMonitoringService>();
         _nextMock = new Mock<RequestDelegate>();
         _middleware = new SafetyGuardrailMiddleware(_nextMock.Object, _loggerMock.Object);
     }
@@ -57,7 +59,7 @@ public class SafetyGuardrailMiddlewareTests
         context.Request.Path = "/api/v1/health";
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _nextMock.Verify(n => n(context), Times.Once);
@@ -79,7 +81,7 @@ public class SafetyGuardrailMiddlewareTests
             .ReturnsAsync(new SafetyValidationResult { IsValid = true });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _nextMock.Verify(n => n(context), Times.Once);
@@ -107,7 +109,7 @@ public class SafetyGuardrailMiddlewareTests
             });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadRequest);
@@ -137,7 +139,7 @@ public class SafetyGuardrailMiddlewareTests
             .ReturnsAsync(new SafetyValidationResult { IsValid = true });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _safetyServiceMock.Verify(s => s.ValidateQueryAsync("BMW car", "test-session-123", It.IsAny<CancellationToken>()), Times.Once);
@@ -158,7 +160,7 @@ public class SafetyGuardrailMiddlewareTests
             .ReturnsAsync(new SafetyValidationResult { IsValid = true });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _safetyServiceMock.Verify(s => s.ValidateQueryAsync("Find a red car", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -182,7 +184,7 @@ public class SafetyGuardrailMiddlewareTests
             .ReturnsAsync(new SafetyValidationResult { IsValid = true });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _safetyServiceMock.Verify(s => s.ValidateQueryAsync("Find a blue SUV", It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -209,7 +211,7 @@ public class SafetyGuardrailMiddlewareTests
             });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadRequest);
@@ -242,7 +244,7 @@ public class SafetyGuardrailMiddlewareTests
             });
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         context.Response.StatusCode.Should().Be((int)HttpStatusCode.BadRequest);
@@ -262,7 +264,7 @@ public class SafetyGuardrailMiddlewareTests
         // No query parameter
 
         // Act
-        await _middleware.InvokeAsync(context, _safetyServiceMock.Object);
+        await _middleware.InvokeAsync(context, _safetyServiceMock.Object, _abuseMonitoringServiceMock.Object);
 
         // Assert
         _nextMock.Verify(n => n(context), Times.Once);
