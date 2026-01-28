@@ -5,7 +5,8 @@
 **Type:** Frontend Implementation  
 **Priority:** Critical  
 **Estimated Complexity:** Medium  
-**FRD Reference:** All FRDs (user-facing interface)
+**FRD Reference:** All FRDs (user-facing interface)  
+**GitHub Issue:** [#37](https://github.com/mollie-ward/complexSearch/issues/37)
 
 ---
 
