@@ -91,6 +91,10 @@ builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ConflictResolver>();
 builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ODataTranslator>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IQueryComposerService, VehicleSearch.Infrastructure.AI.QueryComposerService>();
 
+// Register Conceptual Mapping services
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.AI.SimilarityScorer>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IConceptualMapperService, VehicleSearch.Infrastructure.AI.ConceptualMapperService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
