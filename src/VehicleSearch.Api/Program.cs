@@ -117,6 +117,9 @@ builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ComparativeResolver>(
 builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.QueryRefiner>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IReferenceResolverService, VehicleSearch.Infrastructure.AI.ReferenceResolverService>();
 
+// Register Safety Guardrail services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISafetyGuardrailService, VehicleSearch.Infrastructure.Safety.SafetyGuardrailService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -124,13 +127,16 @@ var app = builder.Build();
 // 1. Exception handling middleware (first to catch all exceptions)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// 2. CORS middleware
+// 2. Safety guardrail middleware (validate inputs early)
+app.UseMiddleware<SafetyGuardrailMiddleware>();
+
+// 3. CORS middleware
 app.UseCors("AllowFrontend");
 
-// 3. Request logging (Serilog request logging)
+// 4. Request logging (Serilog request logging)
 app.UseSerilogRequestLogging();
 
-// 4. OpenAPI/Swagger (in development)
+// 5. OpenAPI/Swagger (in development)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -140,11 +146,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// 5. HTTPS redirection
+// 6. HTTPS redirection
 app.UseHttpsRedirection();
-
-// 6. Rate limiting placeholder
-// TODO: Implement rate limiting in future tasks
 
 // 7. Authentication placeholder
 // TODO: Implement authentication in v2
