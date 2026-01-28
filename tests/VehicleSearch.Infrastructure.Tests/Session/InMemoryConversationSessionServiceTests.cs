@@ -319,6 +319,34 @@ public class InMemoryConversationSessionServiceTests
     }
 
     [Fact]
+    public async Task GetHistory_NegativeMaxMessages_ThrowsArgumentException()
+    {
+        // Arrange
+        var session = await _service.CreateSessionAsync();
+
+        // Act
+        Func<Task> act = async () => await _service.GetHistoryAsync(session.SessionId, -1);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*maxMessages must be greater than zero*");
+    }
+
+    [Fact]
+    public async Task GetHistory_ZeroMaxMessages_ThrowsArgumentException()
+    {
+        // Arrange
+        var session = await _service.CreateSessionAsync();
+
+        // Act
+        Func<Task> act = async () => await _service.GetHistoryAsync(session.SessionId, 0);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*maxMessages must be greater than zero*");
+    }
+
+    [Fact]
     public async Task GetHistory_CustomMaxMessages_ReturnsCorrectCount()
     {
         // Arrange
@@ -360,6 +388,26 @@ public class InMemoryConversationSessionServiceTests
     {
         // Act
         Func<Task> act = async () => await _service.ClearSessionAsync("non-existent-id");
+
+        // Assert
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ClearSession_NullSessionId_DoesNotThrow()
+    {
+        // Act
+        Func<Task> act = async () => await _service.ClearSessionAsync(null!);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task ClearSession_EmptySessionId_DoesNotThrow()
+    {
+        // Act
+        Func<Task> act = async () => await _service.ClearSessionAsync("");
 
         // Assert
         await act.Should().NotThrowAsync();

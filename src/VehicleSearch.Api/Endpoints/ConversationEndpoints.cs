@@ -96,9 +96,16 @@ public static class ConversationEndpoints
         {
             try
             {
+                // Validate maxMessages parameter
+                var validatedMaxMessages = maxMessages ?? 10;
+                if (validatedMaxMessages <= 0 || validatedMaxMessages > 100)
+                {
+                    return Results.BadRequest(new { error = "maxMessages must be between 1 and 100" });
+                }
+
                 var history = await sessionService.GetHistoryAsync(
                     sessionId,
-                    maxMessages ?? 10,
+                    validatedMaxMessages,
                     cancellationToken);
 
                 return Results.Ok(history);

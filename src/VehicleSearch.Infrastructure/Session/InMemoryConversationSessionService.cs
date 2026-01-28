@@ -139,6 +139,11 @@ public class InMemoryConversationSessionService : IConversationSessionService
     /// <inheritdoc/>
     public async Task<ConversationHistory> GetHistoryAsync(string sessionId, int maxMessages = 10, CancellationToken cancellationToken = default)
     {
+        if (maxMessages <= 0)
+        {
+            throw new ArgumentException("maxMessages must be greater than zero.", nameof(maxMessages));
+        }
+
         var session = await GetSessionAsync(sessionId, cancellationToken);
 
         var messages = session.Messages
@@ -163,7 +168,8 @@ public class InMemoryConversationSessionService : IConversationSessionService
     {
         if (string.IsNullOrWhiteSpace(sessionId))
         {
-            throw new ArgumentException("Session ID cannot be null or empty.", nameof(sessionId));
+            // Silently return for null/empty sessionId (consistent with SessionExists behavior)
+            return Task.CompletedTask;
         }
 
         if (_sessions.TryRemove(sessionId, out _))
@@ -186,10 +192,8 @@ public class InMemoryConversationSessionService : IConversationSessionService
             return Task.FromResult(false);
         }
 
-        var exists = _sessions.ContainsKey(sessionId);
-        
-        // Check expiration if session exists
-        if (exists && _sessions.TryGetValue(sessionId, out var session))
+        // Use TryGetValue to avoid race condition between ContainsKey and subsequent access
+        if (_sessions.TryGetValue(sessionId, out var session))
         {
             var inactiveTime = DateTime.UtcNow - session.LastAccessedAt;
             if (inactiveTime.TotalHours > _sessionTimeoutHours)
@@ -197,9 +201,10 @@ public class InMemoryConversationSessionService : IConversationSessionService
                 _sessions.TryRemove(sessionId, out _);
                 return Task.FromResult(false);
             }
+            return Task.FromResult(true);
         }
 
-        return Task.FromResult(exists);
+        return Task.FromResult(false);
     }
 
     /// <summary>
