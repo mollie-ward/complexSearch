@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createSession } from '../api/search';
 import { SessionResponse } from '../api/types';
 
@@ -19,7 +19,7 @@ export function useSession(): UseSessionReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const createNewSession = async () => {
+  const createNewSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -36,7 +36,7 @@ export function useSession(): UseSessionReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // Try to restore session from localStorage
@@ -56,7 +56,7 @@ export function useSession(): UseSessionReturn {
 
     // Create new session if none exists
     createNewSession();
-  }, []);
+  }, [createNewSession]);
 
   return {
     session,

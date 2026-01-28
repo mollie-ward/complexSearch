@@ -19,16 +19,23 @@ class SearchApiError extends Error implements ApiError {
  */
 export async function searchVehicles(request: SearchRequest): Promise<SearchResults> {
   try {
+    const requestBody: Record<string, unknown> = {
+      query: request.query,
+      maxResults: request.maxResults || 10,
+      filters: {},
+    };
+
+    // Include sessionId if provided
+    if (request.sessionId) {
+      requestBody.sessionId = request.sessionId;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/v1/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        query: request.query,
-        maxResults: request.maxResults || 10,
-        filters: {},
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {

@@ -118,8 +118,8 @@ export function VehicleCard({ result, rank }: VehicleCardProps) {
         {visibleFeatures.length > 0 && (
           <div className="mb-4">
             <div className="flex flex-wrap gap-1">
-              {visibleFeatures.map((feature, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
+              {visibleFeatures.map((feature) => (
+                <Badge key={`${vehicle.id}-${feature}`} variant="outline" className="text-xs">
                   {feature}
                 </Badge>
               ))}
