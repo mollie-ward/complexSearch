@@ -72,6 +72,11 @@ builder.Services.AddSingleton<VehicleSearch.Infrastructure.AI.OperatorInferenceS
 builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ConstraintParser>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IAttributeMapperService, VehicleSearch.Infrastructure.AI.AttributeMapperService>();
 
+// Register Query Composition services
+builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ConflictResolver>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ODataTranslator>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IQueryComposerService, VehicleSearch.Infrastructure.AI.QueryComposerService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
