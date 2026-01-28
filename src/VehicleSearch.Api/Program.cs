@@ -101,6 +101,11 @@ builder.Services.AddSingleton<VehicleSearch.Core.Interfaces.IConversationSession
     sp.GetRequiredService<VehicleSearch.Infrastructure.Session.InMemoryConversationSessionService>());
 builder.Services.AddHostedService<VehicleSearch.Infrastructure.Session.SessionCleanupService>();
 
+// Register Reference Resolution services
+builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.ComparativeResolver>();
+builder.Services.AddScoped<VehicleSearch.Infrastructure.AI.QueryRefiner>();
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IReferenceResolverService, VehicleSearch.Infrastructure.AI.ReferenceResolverService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
