@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { VehicleCard } from '@/components/search/VehicleCard';
 import { VehicleResult } from '@/lib/api/types';
+import { ComparisonProvider } from '@/lib/context/ComparisonContext';
 import userEvent from '@testing-library/user-event';
 
 const mockResult: VehicleResult = {
@@ -28,9 +29,13 @@ const mockResult: VehicleResult = {
   },
 };
 
+const renderWithProvider = (ui: React.ReactElement) => {
+  return render(<ComparisonProvider>{ui}</ComparisonProvider>);
+};
+
 describe('VehicleCard', () => {
   it('renders all vehicle details', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
 
     expect(screen.getByText('BMW 3 Series')).toBeInTheDocument();
     expect(screen.getByText('320d M Sport')).toBeInTheDocument();
@@ -43,17 +48,17 @@ describe('VehicleCard', () => {
   });
 
   it('formats price correctly', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
     expect(screen.getByText('£18,500')).toBeInTheDocument();
   });
 
   it('shows relevance score', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
     expect(screen.getByText(/Match: 85%/)).toBeInTheDocument();
   });
 
   it('toggles explanation', async () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
 
     const toggleButton = screen.getByRole('button', { name: /Why this match?/i });
     await userEvent.click(toggleButton);
@@ -63,7 +68,7 @@ describe('VehicleCard', () => {
   });
 
   it('displays features badges', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
 
     // Should show first 5 features
     expect(screen.getByText('Leather Seats')).toBeInTheDocument();
@@ -77,19 +82,19 @@ describe('VehicleCard', () => {
   });
 
   it('clamps description to 2 lines', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
 
     const description = screen.getByText(/Excellent condition BMW/);
     expect(description).toHaveClass('line-clamp-2');
   });
 
   it('shows rank badge', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
     expect(screen.getByText('#1')).toBeInTheDocument();
   });
 
   it('shows service history badge', () => {
-    render(<VehicleCard result={mockResult} rank={1} />);
+    renderWithProvider(<VehicleCard result={mockResult} rank={1} />);
     const badges = screen.getAllByText(/Full Service History/i);
     expect(badges.length).toBeGreaterThan(0);
   });
@@ -109,7 +114,7 @@ describe('VehicleCard', () => {
       score: 0.6,
     };
 
-    render(<VehicleCard result={minimalResult} rank={2} />);
+    renderWithProvider(<VehicleCard result={minimalResult} rank={2} />);
 
     expect(screen.getByText('Ford Focus')).toBeInTheDocument();
     expect(screen.getByText('£12,000')).toBeInTheDocument();
