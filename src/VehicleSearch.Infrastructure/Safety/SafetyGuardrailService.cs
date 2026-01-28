@@ -25,18 +25,24 @@ public class SafetyGuardrailService : ISafetyGuardrailService
     {
         "car", "vehicle", "bmw", "audi", "mercedes", "toyota", "ford", "honda", "nissan",
         "suv", "sedan", "hatchback", "estate", "coupe", "convertible", "truck", "van",
-        "mileage", "price", "engine", "transmission", "petrol", "diesel", "electric",
+        "mileage", "engine", "transmission", "petrol", "diesel", "electric",
         "features", "leather", "navigation", "parking", "automatic", "manual",
-        "horsepower", "mpg", "warranty", "km", "miles", "used", "new"
+        "horsepower", "mpg", "warranty", "km", "miles", "used", "new", "driving"
+    };
+
+    // Weak vehicle keywords that can appear in non-vehicle contexts
+    private static readonly string[] WeakVehicleKeywords = new[]
+    {
+        "price", "show", "find", "get"
     };
 
     // Off-topic keywords (negative indicators)
     private static readonly string[] OffTopicKeywords = new[]
     {
-        "weather", "news", "recipe", "movie", "music", "song", "album",
+        "weather", "news", "recipe", "movie", "music", "song", "album", "pizza",
         "sports", "football", "basketball", "politics", "election",
         "stock", "crypto", "bitcoin", "ethereum", "investment",
-        "restaurant", "hotel", "vacation", "flight", "travel"
+        "restaurant", "hotel", "vacation", "flight", "travel", "make", "cook"
     };
 
     // SQL injection patterns
@@ -51,14 +57,15 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         new Regex(@"\bEXEC\s*\(", RegexOptions.IgnoreCase | RegexOptions.Compiled)
     };
 
-    // Prompt injection patterns
+    // Prompt injection patterns (excluding bulk data patterns which are handled separately)
     private static readonly Regex[] InjectionPatterns = new[]
     {
         // System prompt overrides
-        new Regex(@"ignore\s+(previous|above|all)\s+(instructions|prompts)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"ignore\s+.*\s*instructions?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"ignore\s+.*\s*prompts?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         new Regex(@"you\s+are\s+now", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"new\s+instructions", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"disregard.*instructions", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"new\s+instructions?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"disregard.*instructions?", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         
         // Role manipulation
         new Regex(@"\bact\s+as\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
@@ -66,8 +73,8 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         new Regex(@"\broleplay\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         
         // Information extraction
-        new Regex(@"show\s+me\s+(your|the)\s+(system\s+prompt|instructions)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"what\s+are\s+your\s+(rules|guidelines|instructions)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"show\s+me\s+(your|the)\s+(system\s+prompt|instructions?)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"what\s+are\s+your\s+(rules?|guidelines?|instructions?)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         new Regex(@"reveal.*prompt", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         
         // Jailbreak attempts
@@ -75,18 +82,18 @@ public class SafetyGuardrailService : ISafetyGuardrailService
         new Regex(@"developer\s+mode", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         new Regex(@"\bjailbreak\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         
-        // Data extraction
-        new Regex(@"list\s+all\s+(vehicles|cars|data)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"give\s+me\s+(everything|all\s+data)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        // Database/system extraction
         new Regex(@"dump\s+(database|index)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
     };
 
-    // Bulk extraction patterns
+    // Bulk extraction patterns (data extraction attempts)
     private static readonly Regex[] BulkPatterns = new[]
     {
-        new Regex(@"(list|show|give\s+me)\s+all", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"(list|show(\s+me)?|give\s+me)\s+all\s+(vehicles?|cars?|data)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"(list|show(\s+me)?)\s+all\b", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+        new Regex(@"give\s+me\s+(everything|all(\s+the)?\s+data)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
         new Regex(@"every\s+(car|vehicle)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new Regex(@"\d{2,}\s+(cars|vehicles|results)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
+        new Regex(@"\d{2,}\s+(cars?|vehicles?|results?)", RegexOptions.IgnoreCase | RegexOptions.Compiled)
     };
 
     public SafetyGuardrailService(ILogger<SafetyGuardrailService> logger, IMemoryCache cache)
@@ -112,19 +119,7 @@ public class SafetyGuardrailService : ISafetyGuardrailService
             return charResult;
         }
 
-        // 3. Prompt injection detection
-        if (await ContainsPromptInjectionAsync(query, cancellationToken))
-        {
-            _logger.LogWarning("Prompt injection detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
-            return new SafetyValidationResult
-            {
-                IsValid = false,
-                ViolationType = SafetyViolationType.PromptInjection,
-                Message = "Query contains potentially malicious content and cannot be processed."
-            };
-        }
-
-        // 4. Bulk extraction detection
+        // 3. Bulk extraction detection (check before prompt injection to avoid false positives)
         if (IsBulkExtractionAttempt(query))
         {
             _logger.LogWarning("Bulk extraction attempt detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
@@ -133,6 +128,18 @@ public class SafetyGuardrailService : ISafetyGuardrailService
                 IsValid = false,
                 ViolationType = SafetyViolationType.BulkExtraction,
                 Message = "This query appears to be attempting bulk data extraction. Please refine your search criteria."
+            };
+        }
+
+        // 4. Prompt injection detection
+        if (await ContainsPromptInjectionAsync(query, cancellationToken))
+        {
+            _logger.LogWarning("Prompt injection detected in query: {Query}", query.Substring(0, Math.Min(query.Length, 50)));
+            return new SafetyValidationResult
+            {
+                IsValid = false,
+                ViolationType = SafetyViolationType.PromptInjection,
+                Message = "Query contains potentially malicious content and cannot be processed."
             };
         }
 
@@ -172,20 +179,25 @@ public class SafetyGuardrailService : ISafetyGuardrailService
 
         var lowerQuery = query.ToLower();
 
-        // Check for vehicle-related keywords
-        var hasVehicleKeyword = VehicleKeywords.Any(k => lowerQuery.Contains(k));
+        // Check for vehicle-related keywords (use word boundaries to avoid partial matches)
+        var hasVehicleKeyword = VehicleKeywords.Any(k => 
+            Regex.IsMatch(lowerQuery, $@"\b{Regex.Escape(k)}\b", RegexOptions.IgnoreCase));
+        var hasWeakVehicleKeyword = WeakVehicleKeywords.Any(k => 
+            Regex.IsMatch(lowerQuery, $@"\b{Regex.Escape(k)}\b", RegexOptions.IgnoreCase));
 
-        // Check for off-topic keywords
-        var hasOffTopicKeyword = OffTopicKeywords.Any(k => lowerQuery.Contains(k));
+        // Check for off-topic keywords (use word boundaries)
+        var hasOffTopicKeyword = OffTopicKeywords.Any(k => 
+            Regex.IsMatch(lowerQuery, $@"\b{Regex.Escape(k)}\b", RegexOptions.IgnoreCase));
 
-        // If has off-topic keywords and no vehicle keywords, it's likely off-topic
+        // If has off-topic keywords and no strong vehicle keywords, it's likely off-topic
+        // Weak keywords don't count when there are off-topic keywords present
         if (hasOffTopicKeyword && !hasVehicleKeyword)
         {
             return Task.FromResult(true);
         }
 
-        // If query is very short and has no vehicle keywords, consider it potentially off-topic
-        if (query.Length > 20 && !hasVehicleKeyword)
+        // If query is long and has no vehicle keywords at all, consider it potentially off-topic
+        if (query.Length > 20 && !hasVehicleKeyword && !hasWeakVehicleKeyword)
         {
             // Check if query contains any numbers (often indicates vehicle specs)
             var hasNumbers = query.Any(char.IsDigit);
