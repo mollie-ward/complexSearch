@@ -95,6 +95,12 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IQueryComposerService, 
 builder.Services.AddSingleton<VehicleSearch.Infrastructure.AI.SimilarityScorer>();
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IConceptualMapperService, VehicleSearch.Infrastructure.AI.ConceptualMapperService>();
 
+// Register Conversation Session services
+builder.Services.AddSingleton<VehicleSearch.Infrastructure.Session.InMemoryConversationSessionService>();
+builder.Services.AddSingleton<VehicleSearch.Core.Interfaces.IConversationSessionService>(sp =>
+    sp.GetRequiredService<VehicleSearch.Infrastructure.Session.InMemoryConversationSessionService>());
+builder.Services.AddHostedService<VehicleSearch.Infrastructure.Session.SessionCleanupService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -139,6 +145,7 @@ app.MapKnowledgeBaseEndpoints();
 app.MapVehiclesEndpoints();
 app.MapQueryEndpoints();
 app.MapSearchEndpoints();
+app.MapConversationEndpoints();
 
 // Run the application
 try
