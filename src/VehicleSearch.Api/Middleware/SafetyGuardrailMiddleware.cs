@@ -17,7 +17,7 @@ public class SafetyGuardrailMiddleware
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task InvokeAsync(HttpContext context, ISafetyGuardrailService safetyService)
+    public async Task InvokeAsync(HttpContext context, ISafetyGuardrailService safetyService, IAbuseMonitoringService abuseMonitoringService)
     {
         // Only apply safety checks to search and query endpoints
         if (context.Request.Path.StartsWithSegments("/api/v1/search") ||
@@ -35,6 +35,44 @@ public class SafetyGuardrailMiddleware
 
                     // Validate the query
                     var result = await safetyService.ValidateQueryAsync(query, sessionId, context.RequestAborted);
+
+                    // Track query for abuse monitoring (even if invalid)
+                    if (!string.IsNullOrEmpty(sessionId) && sessionId != "anonymous")
+                    {
+                        await abuseMonitoringService.TrackQueryAsync(
+                            sessionId,
+                            query,
+                            resultCount: 0, // Will be updated later if needed
+                            wasOffTopic: result.ViolationType == VehicleSearch.Core.Enums.SafetyViolationType.OffTopic,
+                            hadPromptInjection: result.ViolationType == VehicleSearch.Core.Enums.SafetyViolationType.PromptInjection,
+                            context.RequestAborted
+                        );
+
+                        // Log security events for violations
+                        if (!result.IsValid)
+                        {
+                            var eventType = result.ViolationType switch
+                            {
+                                VehicleSearch.Core.Enums.SafetyViolationType.PromptInjection => VehicleSearch.Core.Enums.EventType.PromptInjectionDetected,
+                                VehicleSearch.Core.Enums.SafetyViolationType.OffTopic => VehicleSearch.Core.Enums.EventType.OffTopicQuery,
+                                VehicleSearch.Core.Enums.SafetyViolationType.BulkExtraction => VehicleSearch.Core.Enums.EventType.BulkExtractionAttempt,
+                                VehicleSearch.Core.Enums.SafetyViolationType.RateLimitExceeded => VehicleSearch.Core.Enums.EventType.RateLimitExceeded,
+                                _ => VehicleSearch.Core.Enums.EventType.QueryValidationFailed
+                            };
+
+                            await abuseMonitoringService.LogSecurityEventAsync(new VehicleSearch.Core.Models.SecurityEvent
+                            {
+                                SessionId = sessionId,
+                                EventType = eventType,
+                                Description = result.Message,
+                                Metadata = new Dictionary<string, object>
+                                {
+                                    ["ViolationType"] = result.ViolationType?.ToString() ?? "Unknown",
+                                    ["Query"] = query.Length > 50 ? query.Substring(0, 50) + "..." : query
+                                }
+                            }, context.RequestAborted);
+                        }
+                    }
 
                     if (!result.IsValid)
                     {
