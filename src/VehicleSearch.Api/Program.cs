@@ -120,6 +120,9 @@ builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IReferenceResolverServi
 // Register Safety Guardrail services
 builder.Services.AddScoped<VehicleSearch.Core.Interfaces.ISafetyGuardrailService, VehicleSearch.Infrastructure.Safety.SafetyGuardrailService>();
 
+// Register Abuse Monitoring services
+builder.Services.AddScoped<VehicleSearch.Core.Interfaces.IAbuseMonitoringService, VehicleSearch.Infrastructure.Safety.AbuseMonitoringService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
@@ -127,16 +130,19 @@ var app = builder.Build();
 // 1. Exception handling middleware (first to catch all exceptions)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// 2. Safety guardrail middleware (validate inputs early)
+// 2. Session blocking middleware (check blocked sessions first)
+app.UseMiddleware<SessionBlockingMiddleware>();
+
+// 3. Safety guardrail middleware (validate inputs early)
 app.UseMiddleware<SafetyGuardrailMiddleware>();
 
-// 3. CORS middleware
+// 4. CORS middleware
 app.UseCors("AllowFrontend");
 
-// 4. Request logging (Serilog request logging)
+// 5. Request logging (Serilog request logging)
 app.UseSerilogRequestLogging();
 
-// 5. OpenAPI/Swagger (in development)
+// 6. OpenAPI/Swagger (in development)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -146,13 +152,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// 6. HTTPS redirection
+// 7. HTTPS redirection
 app.UseHttpsRedirection();
 
-// 7. Authentication placeholder
+// 8. Authentication placeholder
 // TODO: Implement authentication in v2
 
-// 8. Routing
+// 9. Routing
 app.UseRouting();
 
 // Map default endpoints (health checks, etc.)
