@@ -208,6 +208,60 @@ public static class QueryEndpoints
         .WithName("MapQuery")
         .WithSummary("Map parsed query to search constraints")
         .WithDescription("Maps extracted entities from a parsed query into structured search constraints");
+
+        // POST /api/v1/query/compose
+        group.MapPost("/compose", async (
+            ComposeQueryRequest request,
+            [FromServices] IQueryComposerService composerService,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (request.MappedQuery == null)
+                {
+                    return Results.BadRequest(new { error = "MappedQuery cannot be null" });
+                }
+
+                var composedQuery = await composerService.ComposeQueryAsync(request.MappedQuery, cancellationToken);
+
+                var response = new ComposeQueryResponse
+                {
+                    Type = composedQuery.Type.ToString(),
+                    ConstraintGroups = composedQuery.ConstraintGroups.Select(g => new ConstraintGroupResponse
+                    {
+                        Constraints = g.Constraints.Select(c => new ConstraintResponse
+                        {
+                            FieldName = c.FieldName,
+                            Operator = c.Operator.ToString(),
+                            Value = c.Value,
+                            Type = c.Type.ToString()
+                        }).ToList(),
+                        Operator = g.Operator.ToString(),
+                        Priority = g.Priority
+                    }).ToList(),
+                    GroupOperator = composedQuery.GroupOperator.ToString(),
+                    Warnings = composedQuery.Warnings,
+                    HasConflicts = composedQuery.HasConflicts,
+                    ODataFilter = composedQuery.ODataFilter
+                };
+
+                return Results.Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to compose query",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("ComposeQuery")
+        .WithSummary("Compose complex search query")
+        .WithDescription("Composes a complex search query from mapped constraints with logical operators and conflict resolution");
     }
 
     /// <summary>
@@ -344,5 +398,73 @@ public static class QueryEndpoints
         /// Constraint type.
         /// </summary>
         public string Type { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Request model for composing query.
+    /// </summary>
+    public record ComposeQueryRequest
+    {
+        /// <summary>
+        /// The mapped query with constraints to compose.
+        /// </summary>
+        public MappedQuery MappedQuery { get; init; } = null!;
+    }
+
+    /// <summary>
+    /// Response model for composed query.
+    /// </summary>
+    public record ComposeQueryResponse
+    {
+        /// <summary>
+        /// The type of the composed query.
+        /// </summary>
+        public string Type { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The list of constraint groups.
+        /// </summary>
+        public List<ConstraintGroupResponse> ConstraintGroups { get; init; } = new();
+
+        /// <summary>
+        /// The logical operator combining constraint groups.
+        /// </summary>
+        public string GroupOperator { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Warnings generated during composition.
+        /// </summary>
+        public List<string> Warnings { get; init; } = new();
+
+        /// <summary>
+        /// Whether the query has conflicting constraints.
+        /// </summary>
+        public bool HasConflicts { get; init; }
+
+        /// <summary>
+        /// The OData filter string for Azure Search.
+        /// </summary>
+        public string? ODataFilter { get; init; }
+    }
+
+    /// <summary>
+    /// Response model for a constraint group.
+    /// </summary>
+    public record ConstraintGroupResponse
+    {
+        /// <summary>
+        /// The list of constraints in this group.
+        /// </summary>
+        public List<ConstraintResponse> Constraints { get; init; } = new();
+
+        /// <summary>
+        /// The logical operator for this group.
+        /// </summary>
+        public string Operator { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The priority of this constraint group.
+        /// </summary>
+        public double Priority { get; init; }
     }
 }
