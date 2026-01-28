@@ -5,7 +5,8 @@
 **Type:** Backend Implementation  
 **Priority:** High  
 **Estimated Complexity:** Medium  
-**FRD Reference:** FRD-002 (FR-1, FR-2)
+**FRD Reference:** FRD-002 (FR-1, FR-2)  
+**GitHub Issue:** [#21](https://github.com/mollie-ward/complexSearch/issues/21)
 
 ---
 

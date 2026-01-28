@@ -1,6 +1,7 @@
 # Task: Multi-Criteria Query Composition
 
 **Task ID:** 009  
+**GitHub Issue:** [#19](https://github.com/mollie-ward/complexSearch/issues/19)  
 **Feature:** Natural Language Query Understanding  
 **Type:** Backend Implementation  
 **Priority:** High  
