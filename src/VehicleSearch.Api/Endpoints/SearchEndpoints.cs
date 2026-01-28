@@ -80,7 +80,7 @@ public static class SearchEndpoints
                         NormalizedScore = m.NormalizedScore
                     }).ToList(),
                     AverageScore = response.AverageScore,
-                    SearchDuration = response.SearchDuration.ToString(@"hh\:mm\:ss\.fff")
+                    SearchDuration = $"{response.SearchDuration.TotalMilliseconds:F2}ms"
                 };
 
                 return Results.Ok(apiResponse);

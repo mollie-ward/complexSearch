@@ -45,11 +45,11 @@ public class CachedEmbeddingService : IEmbeddingService
         // Try to get from cache
         if (_cache.TryGetValue<float[]>(cacheKey, out var cachedEmbedding) && cachedEmbedding != null)
         {
-            _logger.LogDebug("Cache hit for embedding: {Text}", text.Substring(0, Math.Min(50, text.Length)));
+            _logger.LogDebug("Cache hit for embedding: {Text}", text[..Math.Min(50, text.Length)]);
             return cachedEmbedding;
         }
 
-        _logger.LogDebug("Cache miss for embedding: {Text}", text.Substring(0, Math.Min(50, text.Length)));
+        _logger.LogDebug("Cache miss for embedding: {Text}", text[..Math.Min(50, text.Length)]);
 
         // Generate embedding via inner service
         var embedding = await _innerService.GenerateEmbeddingAsync(text, cancellationToken);
@@ -62,7 +62,7 @@ public class CachedEmbeddingService : IEmbeddingService
         };
 
         _cache.Set(cacheKey, embedding, cacheOptions);
-        _logger.LogDebug("Cached embedding for: {Text}", text.Substring(0, Math.Min(50, text.Length)));
+        _logger.LogDebug("Cached embedding for: {Text}", text[..Math.Min(50, text.Length)]);
 
         return embedding;
     }

@@ -216,14 +216,29 @@ public class SemanticSearchService : ISemanticSearchService
     }
 
     /// <summary>
-    /// Builds an OData filter string from search constraints.
+    /// Builds an OData filter string from search constraints with field name validation.
     /// </summary>
     private string BuildODataFilter(List<SearchConstraint> constraints)
     {
+        // Whitelist of allowed field names for security
+        var allowedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "id", "make", "model", "derivative", "price", "mileage", "bodyType",
+            "engineSize", "fuelType", "transmissionType", "colour", "numberOfDoors",
+            "registrationDate", "saleLocation", "channel"
+        };
+
         var filters = new List<string>();
 
         foreach (var constraint in constraints)
         {
+            // Validate field name against whitelist
+            if (!allowedFields.Contains(constraint.FieldName))
+            {
+                _logger.LogWarning("Attempted to use invalid field name in filter: {FieldName}", constraint.FieldName);
+                continue; // Skip invalid field names
+            }
+
             var filter = constraint.Operator switch
             {
                 ConstraintOperator.Equals => $"{constraint.FieldName} eq {FormatValue(constraint.Value)}",
@@ -246,13 +261,13 @@ public class SemanticSearchService : ISemanticSearchService
     }
 
     /// <summary>
-    /// Builds an "in" filter for OData.
+    /// Builds an "in" filter for OData with proper escaping.
     /// </summary>
     private string BuildInFilter(string fieldName, object value)
     {
         if (value is IEnumerable<string> values)
         {
-            var conditions = values.Select(v => $"{fieldName} eq '{v}'");
+            var conditions = values.Select(v => $"{fieldName} eq '{v.Replace("'", "''")}'"); // Escape single quotes
             return $"({string.Join(" or ", conditions)})";
         }
 
@@ -260,13 +275,13 @@ public class SemanticSearchService : ISemanticSearchService
     }
 
     /// <summary>
-    /// Formats a value for OData filter.
+    /// Formats a value for OData filter with proper escaping.
     /// </summary>
     private string FormatValue(object value)
     {
         return value switch
         {
-            string s => $"'{s}'",
+            string s => $"'{s.Replace("'", "''")}'", // Escape single quotes for OData
             bool b => b.ToString().ToLowerInvariant(),
             _ => value.ToString() ?? string.Empty
         };
@@ -291,7 +306,9 @@ public class SemanticSearchService : ISemanticSearchService
             TransmissionType = document.TransmissionType,
             Colour = document.Colour,
             NumberOfDoors = document.NumberOfDoors,
-            RegistrationDate = document.RegistrationDate.DateTime,
+            RegistrationDate = document.RegistrationDate != DateTimeOffset.MinValue 
+                ? document.RegistrationDate.DateTime 
+                : null,
             SaleLocation = document.SaleLocation,
             Channel = document.Channel,
             Features = document.Features.ToList(),
