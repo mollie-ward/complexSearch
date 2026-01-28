@@ -179,6 +179,13 @@ npm run test:frontend
 # or: cd frontend && npm test
 ```
 
+**Run E2E tests:**
+```bash
+npm run test:e2e
+```
+
+For detailed testing documentation, see [Testing](#testing) section below.
+
 ### Environment Configuration
 
 The application uses the following environment variables (see `.env.example` for a complete list):
@@ -265,6 +272,102 @@ Longer guides are in the `docs/` folder (MkDocs-ready structure).
 - Benefits: [docs/benefits.md](docs/benefits.md)
 
 For installation/integration scenarios, see [INTEGRATION.md](INTEGRATION.md).
+
+## 🧪 Testing
+
+The Vehicle Search application has comprehensive test coverage across multiple levels:
+
+### Test Types
+
+**1. Unit Tests**
+- **Backend:** xUnit tests for all core services (Coverage target: ≥85%)
+- **Frontend:** Jest + React Testing Library tests for components (Coverage target: ≥80%)
+
+**2. Integration Tests**
+- End-to-end flow validation
+- FRD (Functional Requirements Document) acceptance tests
+- All 6 FRDs validated with automated tests
+
+**3. E2E Tests (Playwright)**
+- 24 test scenarios across 4 suites
+- Multi-browser testing (Chrome, Firefox, Mobile)
+- Tests for search flows, conversation context, safety guardrails, and user interactions
+
+**4. Performance Tests**
+- BenchmarkDotNet for backend performance
+- Targets: Simple search <500ms, Semantic search <2s, Hybrid search <3s
+
+**5. Load Tests (k6)**
+- Tests with 100 concurrent users
+- Load profile: 0→50→100 users over 8 minutes
+- Thresholds: P95 <3s, Error rate <1%
+
+### Quick Start
+
+**Run all tests:**
+```bash
+# Backend unit tests
+npm run test
+
+# Frontend unit tests  
+npm run test:frontend
+
+# E2E tests (all browsers)
+npm run test:e2e
+
+# E2E tests (specific browser)
+npm run test:e2e:chromium
+npm run test:e2e:firefox
+npm run test:e2e:mobile
+
+# E2E tests with UI (interactive mode)
+npm run test:e2e:ui
+
+# Performance benchmarks
+cd tests/VehicleSearch.Performance.Tests
+dotnet run -c Release
+
+# Load tests (requires backend running)
+k6 run tests/load/search-load.js
+```
+
+### Test Coverage
+
+Current coverage reports are generated automatically in CI/CD and can be viewed locally:
+
+**Backend Coverage:**
+```bash
+cd src
+dotnet test --collect:"XPlat Code Coverage"
+reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage-report
+# Open coverage-report/index.html
+```
+
+**Frontend Coverage:**
+```bash
+cd frontend
+npm test -- --coverage
+# Open coverage/index.html
+```
+
+### CI/CD Integration
+
+All tests run automatically on:
+- Every push to `main`, `develop`, or `copilot/**` branches
+- Every pull request
+
+**Quality Gates:**
+- ✅ All unit tests must pass
+- ✅ Backend coverage ≥85%
+- ✅ Frontend coverage ≥80%
+- ✅ All E2E tests must pass on Chrome, Firefox, and Mobile
+- ✅ Integration tests must pass
+
+### Documentation
+
+For detailed testing instructions, see:
+- **[Test Execution Guide](docs/TEST_EXECUTION.md)** - Complete testing documentation
+- **[Performance Report](docs/PERFORMANCE_REPORT.md)** - Performance benchmarks and analysis
 
 ## 🤝 Contributing
 
