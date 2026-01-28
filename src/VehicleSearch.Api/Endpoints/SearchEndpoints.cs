@@ -100,6 +100,105 @@ public static class SearchEndpoints
         .WithName("SemanticSearch")
         .WithSummary("Perform semantic search using vector embeddings")
         .WithDescription("Searches for vehicles using natural language queries and vector similarity matching");
+
+        // POST /api/v1/search/similarity
+        group.MapPost("/similarity", async (
+            SimilarityRequest request,
+            [FromServices] IConceptualMapperService conceptualMapper,
+            [FromServices] IVehicleRetrievalService vehicleRetrieval,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.VehicleId))
+                {
+                    return Results.BadRequest(new { error = "VehicleId is required" });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Concept))
+                {
+                    return Results.BadRequest(new { error = "Concept is required" });
+                }
+
+                // Get the vehicle
+                var vehicle = await vehicleRetrieval.GetVehicleByIdAsync(request.VehicleId, cancellationToken);
+                if (vehicle == null)
+                {
+                    return Results.NotFound(new { error = $"Vehicle '{request.VehicleId}' not found" });
+                }
+
+                // Map concept to attributes
+                var mapping = await conceptualMapper.MapConceptToAttributesAsync(request.Concept);
+                if (mapping == null)
+                {
+                    return Results.BadRequest(new { error = $"Unknown concept '{request.Concept}'" });
+                }
+
+                // Compute similarity
+                var score = await conceptualMapper.ComputeSimilarityAsync(vehicle, mapping);
+
+                return Results.Ok(new
+                {
+                    overallScore = score.OverallScore,
+                    componentScores = score.ComponentScores,
+                    matchingAttributes = score.MatchingAttributes,
+                    mismatchingAttributes = score.MismatchingAttributes
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to compute similarity",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("ComputeSimilarity")
+        .WithSummary("Compute similarity score for a vehicle against a concept")
+        .WithDescription("Computes multi-factor similarity between a vehicle and a qualitative concept");
+
+        // POST /api/v1/search/explain
+        group.MapPost("/explain", async (
+            ExplainRequest request,
+            [FromServices] IConceptualMapperService conceptualMapper,
+            [FromServices] IVehicleRetrievalService vehicleRetrieval,
+            CancellationToken cancellationToken) =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.VehicleId))
+                {
+                    return Results.BadRequest(new { error = "VehicleId is required" });
+                }
+
+                if (request.Query == null)
+                {
+                    return Results.BadRequest(new { error = "Query is required" });
+                }
+
+                // Get the vehicle
+                var vehicle = await vehicleRetrieval.GetVehicleByIdAsync(request.VehicleId, cancellationToken);
+                if (vehicle == null)
+                {
+                    return Results.NotFound(new { error = $"Vehicle '{request.VehicleId}' not found" });
+                }
+
+                // Generate explanation
+                var explanation = await conceptualMapper.ExplainRelevanceAsync(vehicle, request.Query);
+
+                return Results.Ok(explanation);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Failed to generate explanation",
+                    detail: ex.Message,
+                    statusCode: 500);
+            }
+        })
+        .WithName("ExplainRelevance")
+        .WithSummary("Generate explanation for why a vehicle matched a query")
+        .WithDescription("Provides an explainable relevance score with detailed breakdown");
     }
 
     /// <summary>
@@ -260,5 +359,37 @@ public static class SearchEndpoints
         /// Gets or sets the features.
         /// </summary>
         public List<string> Features { get; init; } = new();
+    }
+
+    /// <summary>
+    /// Request model for similarity computation.
+    /// </summary>
+    public record SimilarityRequest
+    {
+        /// <summary>
+        /// Gets or sets the vehicle ID.
+        /// </summary>
+        public string VehicleId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the concept name (e.g., "reliable", "economical").
+        /// </summary>
+        public string Concept { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Request model for explanation generation.
+    /// </summary>
+    public record ExplainRequest
+    {
+        /// <summary>
+        /// Gets or sets the vehicle ID.
+        /// </summary>
+        public string VehicleId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Gets or sets the parsed query to explain.
+        /// </summary>
+        public ParsedQuery Query { get; init; } = null!;
     }
 }
