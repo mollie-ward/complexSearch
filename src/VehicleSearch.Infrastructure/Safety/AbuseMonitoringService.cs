@@ -290,49 +290,53 @@ public class AbuseMonitoringService : IAbuseMonitoringService
         {
             var session = await _sessionService.GetSessionAsync(sessionId, cancellationToken);
             
-            // Initialize or get existing counters
-            var totalQueries = session.Metadata.GetValueOrDefault("TotalQueries", 0);
-            var offTopicCount = session.Metadata.GetValueOrDefault("OffTopicCount", 0);
-            var injectionCount = session.Metadata.GetValueOrDefault("PromptInjectionCount", 0);
-            var largeResultCount = session.Metadata.GetValueOrDefault("LargeResultCount", 0);
+            // Use lock for thread-safe metadata updates
+            lock (session.Metadata)
+            {
+                // Initialize or get existing counters
+                var totalQueries = session.Metadata.GetValueOrDefault("TotalQueries", 0);
+                var offTopicCount = session.Metadata.GetValueOrDefault("OffTopicCount", 0);
+                var injectionCount = session.Metadata.GetValueOrDefault("PromptInjectionCount", 0);
+                var largeResultCount = session.Metadata.GetValueOrDefault("LargeResultCount", 0);
 
-            // Update counters
-            session.Metadata["TotalQueries"] = Convert.ToInt32(totalQueries) + 1;
-            
-            if (wasOffTopic)
-            {
-                session.Metadata["OffTopicCount"] = Convert.ToInt32(offTopicCount) + 1;
-            }
-            
-            if (hadPromptInjection)
-            {
-                session.Metadata["PromptInjectionCount"] = Convert.ToInt32(injectionCount) + 1;
-            }
-            
-            if (resultCount >= _largeResultThreshold)
-            {
-                session.Metadata["LargeResultCount"] = Convert.ToInt32(largeResultCount) + 1;
-            }
+                // Update counters
+                session.Metadata["TotalQueries"] = Convert.ToInt32(totalQueries) + 1;
+                
+                if (wasOffTopic)
+                {
+                    session.Metadata["OffTopicCount"] = Convert.ToInt32(offTopicCount) + 1;
+                }
+                
+                if (hadPromptInjection)
+                {
+                    session.Metadata["PromptInjectionCount"] = Convert.ToInt32(injectionCount) + 1;
+                }
+                
+                if (resultCount >= _largeResultThreshold)
+                {
+                    session.Metadata["LargeResultCount"] = Convert.ToInt32(largeResultCount) + 1;
+                }
 
-            // Track query history
-            var queryHistory = session.Metadata.GetValueOrDefault("QueryHistory", new List<string>()) as List<string> ?? new List<string>();
-            queryHistory.Add(query);
-            
-            // Keep only recent queries (last 20)
-            if (queryHistory.Count > 20)
-            {
-                queryHistory = queryHistory.Skip(queryHistory.Count - 20).ToList();
-            }
-            session.Metadata["QueryHistory"] = queryHistory;
+                // Track query history
+                var queryHistory = session.Metadata.GetValueOrDefault("QueryHistory", new List<string>()) as List<string> ?? new List<string>();
+                queryHistory.Add(query);
+                
+                // Keep only recent queries (last 20)
+                if (queryHistory.Count > 20)
+                {
+                    queryHistory = queryHistory.Skip(queryHistory.Count - 20).ToList();
+                }
+                session.Metadata["QueryHistory"] = queryHistory;
 
-            // Track request timestamps for rapid request detection
-            var timestamps = session.Metadata.GetValueOrDefault("RequestTimestamps", new List<DateTime>()) as List<DateTime> ?? new List<DateTime>();
-            timestamps.Add(DateTime.UtcNow);
-            
-            // Keep only recent timestamps (last 10 seconds)
-            var cutoff = DateTime.UtcNow.AddSeconds(-_rapidRequestsWindowSeconds);
-            timestamps = timestamps.Where(t => t > cutoff).ToList();
-            session.Metadata["RequestTimestamps"] = timestamps;
+                // Track request timestamps for rapid request detection
+                var timestamps = session.Metadata.GetValueOrDefault("RequestTimestamps", new List<DateTime>()) as List<DateTime> ?? new List<DateTime>();
+                timestamps.Add(DateTime.UtcNow);
+                
+                // Keep only recent timestamps (last 10 seconds)
+                var cutoff = DateTime.UtcNow.AddSeconds(-_rapidRequestsWindowSeconds);
+                timestamps = timestamps.Where(t => t > cutoff).ToList();
+                session.Metadata["RequestTimestamps"] = timestamps;
+            }
         }
         catch (Exception ex)
         {

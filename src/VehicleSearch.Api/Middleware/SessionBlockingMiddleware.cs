@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using VehicleSearch.Core.Enums;
 using VehicleSearch.Core.Interfaces;
 using VehicleSearch.Core.Models;
@@ -12,13 +13,16 @@ public class SessionBlockingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<SessionBlockingMiddleware> _logger;
+    private readonly TimeSpan _criticalRiskDuration;
 
     public SessionBlockingMiddleware(
         RequestDelegate next, 
-        ILogger<SessionBlockingMiddleware> logger)
+        ILogger<SessionBlockingMiddleware> logger,
+        IConfiguration configuration)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _criticalRiskDuration = configuration.GetValue("AbuseMonitoring:Blocking:CriticalRiskDuration", TimeSpan.FromHours(1));
     }
 
     public async Task InvokeAsync(
@@ -46,18 +50,16 @@ public class SessionBlockingMiddleware
                 return;
             }
 
-            // Check if session is blocked
-            var isBlocked = await abuseMonitoringService.IsSessionBlockedAsync(sessionId, context.RequestAborted);
+            // Check if session is blocked (optimized to single cache lookup)
+            var blockInfo = await abuseMonitoringService.GetBlockInfoAsync(sessionId, context.RequestAborted);
             
-            if (isBlocked)
+            if (blockInfo != null)
             {
-                var blockInfo = await abuseMonitoringService.GetBlockInfoAsync(sessionId, context.RequestAborted);
-                
                 _logger.LogWarning(
                     "Blocked session {SessionId} attempted access. Reason: {Reason}, Expires: {ExpiresAt}",
                     sessionId,
-                    blockInfo?.Reason,
-                    blockInfo?.ExpiresAt
+                    blockInfo.Reason,
+                    blockInfo.ExpiresAt
                 );
 
                 context.Response.StatusCode = 403; // Forbidden
@@ -68,13 +70,11 @@ public class SessionBlockingMiddleware
                     error = new
                     {
                         code = "SESSION_BLOCKED",
-                        message = "Your session has been temporarily blocked due to suspicious activity.",
+                        message = $"Your session has been temporarily blocked. Please wait until {blockInfo.ExpiresAt:HH:mm:ss UTC} or contact support if you believe this is an error.",
                         details = new
                         {
-                            blockedAt = blockInfo?.BlockedAt,
-                            expiresAt = blockInfo?.ExpiresAt,
-                            remainingTime = blockInfo?.RemainingTime.ToString(@"hh\:mm\:ss"),
-                            reason = blockInfo?.Reason
+                            expiresAt = blockInfo.ExpiresAt,
+                            remainingTime = blockInfo.RemainingTime.ToString(@"hh\:mm\:ss")
                         }
                     },
                     timestamp = DateTime.UtcNow.ToString("O"),
@@ -100,13 +100,14 @@ public class SessionBlockingMiddleware
             if (suspiciousActivity.RiskLevel == RiskLevel.Critical)
             {
                 _logger.LogCritical(
-                    "Critical risk detected for session {SessionId}. Auto-blocking for 1 hour.",
-                    sessionId
+                    "Critical risk detected for session {SessionId}. Auto-blocking for {Duration}.",
+                    sessionId,
+                    _criticalRiskDuration
                 );
 
                 await abuseMonitoringService.BlockSessionAsync(
                     sessionId,
-                    TimeSpan.FromHours(1),
+                    _criticalRiskDuration,
                     $"Automatic block due to critical risk: {suspiciousActivity.Recommendation}",
                     context.RequestAborted
                 );
@@ -133,12 +134,11 @@ public class SessionBlockingMiddleware
                     error = new
                     {
                         code = "SESSION_BLOCKED",
-                        message = "Your session has been blocked due to suspicious activity patterns.",
+                        message = "Your session has been blocked due to suspicious activity patterns. Please contact support if you believe this is an error.",
                         details = new
                         {
-                            riskLevel = suspiciousActivity.RiskLevel.ToString(),
-                            detectedPatterns = suspiciousActivity.DetectedPatterns.Select(p => p.Description).ToList(),
-                            recommendation = suspiciousActivity.Recommendation
+                            riskLevel = "Critical",
+                            blockedUntil = DateTime.UtcNow.Add(_criticalRiskDuration)
                         }
                     },
                     timestamp = DateTime.UtcNow.ToString("O"),
