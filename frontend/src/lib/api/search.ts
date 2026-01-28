@@ -138,6 +138,44 @@ export async function createSession(): Promise<SessionResponse> {
 }
 
 /**
+ * Get similar vehicles based on make, model, and price range
+ */
+export async function getSimilarVehicles(id: string, limit: number = 4): Promise<VehicleDocument[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/vehicles/${id}/similar?limit=${limit}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      // If endpoint doesn't exist, return empty array
+      if (response.status === 404) {
+        return [];
+      }
+      const errorData = await response.json().catch(() => ({}));
+      throw new SearchApiError(
+        errorData.message || `Failed to fetch similar vehicles: ${response.statusText}`,
+        response.status,
+        errorData
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof SearchApiError) {
+      throw error;
+    }
+    throw new SearchApiError(
+      error instanceof Error ? error.message : 'An unknown error occurred',
+      undefined,
+      error
+    );
+  }
+}
+
+/**
  * Format a TimeSpan duration to a readable string
  */
 function formatDuration(duration: string | { totalMilliseconds?: number }): string {
