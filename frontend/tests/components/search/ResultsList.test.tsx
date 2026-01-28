@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ResultsList } from '@/components/search/ResultsList';
 import { VehicleResult } from '@/lib/api/types';
+import { ComparisonProvider } from '@/lib/context/ComparisonContext';
 
 const mockResults: VehicleResult[] = [
   {
@@ -33,9 +34,13 @@ const mockResults: VehicleResult[] = [
   },
 ];
 
+const renderWithProvider = (ui: React.ReactElement) => {
+  return render(<ComparisonProvider>{ui}</ComparisonProvider>);
+};
+
 describe('ResultsList', () => {
   it('renders all results', () => {
-    render(
+    renderWithProvider(
       <ResultsList
         results={mockResults}
         totalCount={2}
@@ -48,7 +53,7 @@ describe('ResultsList', () => {
   });
 
   it('shows empty state when no results', () => {
-    render(
+    renderWithProvider(
       <ResultsList
         results={[]}
         totalCount={0}
@@ -61,7 +66,7 @@ describe('ResultsList', () => {
   });
 
   it('displays search metadata', () => {
-    render(
+    renderWithProvider(
       <ResultsList
         results={mockResults}
         totalCount={2}
@@ -74,7 +79,7 @@ describe('ResultsList', () => {
   });
 
   it('uses responsive layout', () => {
-    const { container } = render(
+    const { container } = renderWithProvider(
       <ResultsList
         results={mockResults}
         totalCount={2}
@@ -88,7 +93,7 @@ describe('ResultsList', () => {
   });
 
   it('shows correct count in metadata', () => {
-    render(
+    renderWithProvider(
       <ResultsList
         results={mockResults}
         totalCount={100}

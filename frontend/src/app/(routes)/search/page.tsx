@@ -3,16 +3,28 @@
 import { SearchInput } from '@/components/search/SearchInput';
 import { ResultsList } from '@/components/search/ResultsList';
 import { ConversationHistory } from '@/components/search/ConversationHistory';
+import { RefinementControls } from '@/components/search/RefinementControls';
+import { RefinementSuggestions } from '@/components/search/RefinementSuggestions';
+import { ComparisonView } from '@/components/search/ComparisonView';
 import { useSearch } from '@/lib/hooks/useSearch';
 import { useSession } from '@/lib/hooks/useSession';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
+import { RefinementFilters } from '@/lib/api/types';
 
 export default function SearchPage() {
   const { session, isLoading: sessionLoading, error: sessionError } = useSession();
   const { search, results, isLoading, error } = useSearch(session?.sessionId);
 
   const handleSearch = async (query: string) => {
+    await search(query);
+  };
+
+  const handleRefine = async (filters: RefinementFilters, query: string) => {
+    await search(query);
+  };
+
+  const handleSuggest = async (query: string) => {
     await search(query);
   };
 
@@ -63,6 +75,16 @@ export default function SearchPage() {
             </div>
           )}
 
+          {/* Refinement Controls and Suggestions */}
+          {results && results.totalCount > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <RefinementSuggestions onSuggest={handleSuggest} isLoading={isLoading} />
+                <RefinementControls onRefine={handleRefine} isLoading={isLoading} />
+              </div>
+            </div>
+          )}
+
           {results && (
             <ResultsList
               results={results.results}
@@ -77,6 +99,9 @@ export default function SearchPage() {
           {session && <ConversationHistory sessionId={session.sessionId} />}
         </div>
       </div>
+
+      {/* Comparison View */}
+      <ComparisonView />
     </main>
   );
 }

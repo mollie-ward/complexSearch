@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ComparisonProvider } from '@/lib/context/ComparisonContext'
 
 export const metadata: Metadata = {
   title: 'Vehicle Search - Intelligent Search Agent',
@@ -15,7 +16,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="min-h-screen bg-background">
-          {children}
+          <ComparisonProvider>
+            {children}
+          </ComparisonProvider>
         </div>
       </body>
     </html>

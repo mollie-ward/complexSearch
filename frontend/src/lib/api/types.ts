@@ -74,3 +74,29 @@ export interface ApiError {
   status?: number;
   details?: unknown;
 }
+
+export interface ConversationHistory {
+  sessionId: string;
+  messages: ConversationMessage[];
+  totalMessages: number;
+}
+
+export interface ConversationMessage {
+  messageId: string;
+  role: 'User' | 'Assistant';
+  content: string;
+  timestamp: string;
+  results?: {
+    count: number;
+    strategy: string;
+  };
+}
+
+export interface RefinementFilters {
+  priceRange?: [number, number];
+  mileageRange?: [number, number];
+  make?: string;
+  fuelType?: string;
+  transmission?: string;
+  yearMin?: number;
+}
