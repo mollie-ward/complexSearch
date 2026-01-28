@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, CheckCircle, XCircle } from 'lucide-react';
 import { useComparison } from '@/lib/context/ComparisonContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { VehicleDocument } from '@/lib/api/types';
 
 export function ComparisonView() {
   const { selectedVehicles, toggleVehicle, clearComparison } = useComparison();
@@ -45,7 +46,7 @@ export function ComparisonView() {
     }
   };
 
-  const isBestValue = (vehicle: any, attr: 'price' | 'mileage' | 'year') => {
+  const isBestValue = (vehicle: VehicleDocument, attr: 'price' | 'mileage' | 'year') => {
     const best = getBestValue(attr);
     if (!best) return false;
 

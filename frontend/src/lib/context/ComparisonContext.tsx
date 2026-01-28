@@ -8,6 +8,7 @@ interface ComparisonContextType {
   toggleVehicle: (vehicle: VehicleDocument) => void;
   clearComparison: () => void;
   isSelected: (vehicleId: string) => boolean;
+  canAddMore: boolean;
 }
 
 const ComparisonContext = createContext<ComparisonContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export function ComparisonProvider({ children }: { children: ReactNode }) {
       } else {
         // Add if not selected (max 3)
         if (prev.length >= 3) {
+          // TODO: Show toast notification that max limit reached
           return prev;
         }
         return [...prev, vehicle];
@@ -39,9 +41,11 @@ export function ComparisonProvider({ children }: { children: ReactNode }) {
     return selectedVehicles.some((v) => v.id === vehicleId);
   };
 
+  const canAddMore = selectedVehicles.length < 3;
+
   return (
     <ComparisonContext.Provider
-      value={{ selectedVehicles, toggleVehicle, clearComparison, isSelected }}
+      value={{ selectedVehicles, toggleVehicle, clearComparison, isSelected, canAddMore }}
     >
       {children}
     </ComparisonContext.Provider>

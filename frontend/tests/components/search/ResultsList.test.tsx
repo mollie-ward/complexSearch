@@ -35,7 +35,7 @@ const mockResults: VehicleResult[] = [
 ];
 
 const renderWithProvider = (ui: React.ReactElement) => {
-  return renderWithProvider(<ComparisonProvider>{ui}</ComparisonProvider>);
+  return render(<ComparisonProvider>{ui}</ComparisonProvider>);
 };
 
 describe('ResultsList', () => {

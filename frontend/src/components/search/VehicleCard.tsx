@@ -49,15 +49,15 @@ export function VehicleCard({ result, rank }: VehicleCardProps) {
     <Card className="h-full flex flex-col" data-testid="vehicle-card">
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Checkbox
               data-testid="compare-checkbox"
               checked={isSelected(vehicle.id)}
               onCheckedChange={() => toggleVehicle(vehicle)}
+              aria-label={`Compare ${vehicle.make} ${vehicle.model}`}
             />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary" className="font-bold">
                 #{rank}
               </Badge>
@@ -95,6 +95,7 @@ export function VehicleCard({ result, rank }: VehicleCardProps) {
             {vehicle.derivative && (
               <CardDescription className="mt-1">{vehicle.derivative}</CardDescription>
             )}
+          </div>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold">{formatPrice(vehicle.price)}</div>

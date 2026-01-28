@@ -63,10 +63,16 @@ export function RefinementControls({ onRefine, isLoading }: RefinementControlsPr
   };
 
   const handleApply = () => {
-    const filters: RefinementFilters = {
-      priceRange: priceRange,
-      mileageRange: mileageRange,
-    };
+    const filters: RefinementFilters = {};
+
+    // Only add ranges if they differ from defaults
+    if (priceRange[0] !== 0 || priceRange[1] !== 50000) {
+      filters.priceRange = priceRange;
+    }
+    
+    if (mileageRange[0] !== 0 || mileageRange[1] !== 150000) {
+      filters.mileageRange = mileageRange;
+    }
 
     if (make !== 'All Makes') {
       filters.make = make;
@@ -90,14 +96,19 @@ export function RefinementControls({ onRefine, isLoading }: RefinementControlsPr
     if (fuelType !== 'All Fuel Types') parts.push(fuelType);
     if (transmission !== 'All Transmissions') parts.push(transmission);
     
-    parts.push(`under ${formatPrice(priceRange[1])}`);
-    parts.push(`with less than ${formatMileage(mileageRange[1])} miles`);
+    // Only include price/mileage if not at max defaults
+    if (priceRange[1] < 50000) {
+      parts.push(`under ${formatPrice(priceRange[1])}`);
+    }
+    if (mileageRange[1] < 150000) {
+      parts.push(`with less than ${formatMileage(mileageRange[1])} miles`);
+    }
     
     if (yearMin !== 'Any Year') {
       parts.push(`from ${yearMin} or newer`);
     }
 
-    const query = parts.join(' ');
+    const query = parts.length > 0 ? parts.join(' ') : 'all vehicles';
     onRefine(filters, query);
     setOpen(false);
   };
