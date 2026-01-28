@@ -5,8 +5,11 @@ import { VehicleResult } from '@/lib/api/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { useComparison } from '@/lib/context/ComparisonContext';
+import Link from 'next/link';
 
 interface VehicleCardProps {
   result: VehicleResult;
@@ -16,6 +19,7 @@ interface VehicleCardProps {
 export function VehicleCard({ result, rank }: VehicleCardProps) {
   const [showExplanation, setShowExplanation] = useState(false);
   const { vehicle, score, scoreBreakdown } = result;
+  const { isSelected, toggleVehicle } = useComparison();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-GB', {
@@ -45,6 +49,13 @@ export function VehicleCard({ result, rank }: VehicleCardProps) {
     <Card className="h-full flex flex-col" data-testid="vehicle-card">
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              data-testid="compare-checkbox"
+              checked={isSelected(vehicle.id)}
+              onCheckedChange={() => toggleVehicle(vehicle)}
+            />
+          </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary" className="font-bold">
@@ -195,7 +206,9 @@ export function VehicleCard({ result, rank }: VehicleCardProps) {
             </>
           )}
         </Button>
-        <Button size="sm">View Details</Button>
+        <Link href={`/vehicles/${vehicle.id}`}>
+          <Button size="sm">View Details</Button>
+        </Link>
       </CardFooter>
     </Card>
   );
