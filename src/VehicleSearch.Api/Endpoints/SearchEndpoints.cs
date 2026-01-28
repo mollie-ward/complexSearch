@@ -319,6 +319,12 @@ public static class SearchEndpoints
                     return Results.BadRequest(new { error = "Query is required for re-ranking" });
                 }
 
+                // Validate all results have required vehicle data
+                if (request.Results.Any(r => r.Vehicle == null))
+                {
+                    return Results.BadRequest(new { error = "All results must have valid vehicle data" });
+                }
+
                 // Convert API request to service models
                 var vehicleResults = request.Results.Select(r => new VehicleResult
                 {

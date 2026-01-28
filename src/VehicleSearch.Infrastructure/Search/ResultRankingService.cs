@@ -14,6 +14,18 @@ public class ResultRankingService : IResultRankingService
     private readonly ILogger<ResultRankingService> _logger;
 
     /// <summary>
+    /// Default factor weights for ranking (sum = 1.0).
+    /// </summary>
+    private static readonly Dictionary<RankingFactor, double> DefaultFactorWeights = new()
+    {
+        [RankingFactor.SemanticRelevance] = 0.40,
+        [RankingFactor.ExactMatchCount] = 0.25,
+        [RankingFactor.PriceCompetitiveness] = 0.15,
+        [RankingFactor.VehicleCondition] = 0.10,
+        [RankingFactor.Recency] = 0.10
+    };
+
+    /// <summary>
     /// Default business rules for vehicle ranking.
     /// </summary>
     private static readonly List<BusinessRule> DefaultBusinessRules = new()
@@ -78,14 +90,7 @@ public class ResultRankingService : IResultRankingService
         var strategy = new RerankingStrategy
         {
             Approach = RerankingApproach.WeightedScore,
-            FactorWeights = new Dictionary<RankingFactor, double>
-            {
-                [RankingFactor.SemanticRelevance] = 0.40,
-                [RankingFactor.ExactMatchCount] = 0.25,
-                [RankingFactor.PriceCompetitiveness] = 0.15,
-                [RankingFactor.VehicleCondition] = 0.10,
-                [RankingFactor.Recency] = 0.10
-            },
+            FactorWeights = new Dictionary<RankingFactor, double>(DefaultFactorWeights),
             BusinessRules = DefaultBusinessRules,
             ApplyDiversity = true,
             MaxPerMake = 3,
@@ -110,6 +115,17 @@ public class ResultRankingService : IResultRankingService
         if (strategy == null)
         {
             throw new ArgumentNullException(nameof(strategy));
+        }
+
+        // Validate strategy parameters
+        if (strategy.MaxPerMake <= 0)
+        {
+            throw new ArgumentException("MaxPerMake must be greater than 0", nameof(strategy));
+        }
+
+        if (strategy.MaxPerModel <= 0)
+        {
+            throw new ArgumentException("MaxPerModel must be greater than 0", nameof(strategy));
         }
 
         var stopwatch = Stopwatch.StartNew();
@@ -208,17 +224,7 @@ public class ResultRankingService : IResultRankingService
             [RankingFactor.Recency] = ComputeRecencyScore(result.Vehicle)
         };
 
-        // Default weights
-        var weights = new Dictionary<RankingFactor, double>
-        {
-            [RankingFactor.SemanticRelevance] = 0.40,
-            [RankingFactor.ExactMatchCount] = 0.25,
-            [RankingFactor.PriceCompetitiveness] = 0.15,
-            [RankingFactor.VehicleCondition] = 0.10,
-            [RankingFactor.Recency] = 0.10
-        };
-
-        var weightedScore = weights.Sum(kvp => scores[kvp.Key] * kvp.Value);
+        var weightedScore = DefaultFactorWeights.Sum(kvp => scores[kvp.Key] * kvp.Value);
 
         // Apply business rules
         var adjustment = 0.0;
@@ -242,6 +248,16 @@ public class ResultRankingService : IResultRankingService
         ComposedQuery query,
         CancellationToken cancellationToken)
     {
+        // Pre-calculate price statistics once for all results
+        decimal? minPrice = null;
+        decimal? maxPrice = null;
+        if (factorWeights.ContainsKey(RankingFactor.PriceCompetitiveness) && results.Any())
+        {
+            var prices = results.Select(r => r.Vehicle.Price).ToList();
+            minPrice = prices.Min();
+            maxPrice = prices.Max();
+        }
+
         foreach (var result in results)
         {
             var scores = new Dictionary<RankingFactor, double>();
@@ -253,7 +269,7 @@ public class ResultRankingService : IResultRankingService
                 {
                     RankingFactor.SemanticRelevance => result.ScoreBreakdown?.SemanticScore ?? result.Score,
                     RankingFactor.ExactMatchCount => ComputeExactMatchScore(result.Vehicle, query),
-                    RankingFactor.PriceCompetitiveness => ComputePriceScore(result.Vehicle, results),
+                    RankingFactor.PriceCompetitiveness => ComputePriceScore(result.Vehicle.Price, minPrice, maxPrice),
                     RankingFactor.VehicleCondition => ComputeConditionScore(result.Vehicle),
                     RankingFactor.Recency => ComputeRecencyScore(result.Vehicle),
                     _ => 0.5 // Default neutral score
@@ -405,8 +421,15 @@ public class ResultRankingService : IResultRankingService
                 _ => false
             };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(
+                ex,
+                "Failed to match constraint {FieldName} {Operator} {Value} for vehicle {VehicleId}",
+                constraint.FieldName,
+                constraint.Operator,
+                constraint.Value,
+                vehicle.Id);
             return false;
         }
     }
@@ -423,28 +446,32 @@ public class ResultRankingService : IResultRankingService
     /// <summary>
     /// Computes price competitiveness score.
     /// </summary>
-    private double ComputePriceScore(Vehicle vehicle, List<VehicleResult> allResults)
+    /// <param name="price">Vehicle price.</param>
+    /// <param name="minPrice">Minimum price in result set.</param>
+    /// <param name="maxPrice">Maximum price in result set.</param>
+    /// <returns>Price competitiveness score (0-1).</returns>
+    private double ComputePriceScore(decimal price, decimal? minPrice, decimal? maxPrice)
     {
-        if (!allResults.Any() || allResults.Count == 1)
+        if (!minPrice.HasValue || !maxPrice.HasValue || maxPrice == minPrice)
         {
-            return 0.5; // Neutral if no comparison
-        }
-
-        var prices = allResults.Select(r => r.Vehicle.Price).ToList();
-        var minPrice = prices.Min();
-        var maxPrice = prices.Max();
-
-        if (maxPrice == minPrice)
-        {
-            return 0.5; // All same price
+            return 0.5; // Neutral if no comparison available
         }
 
         // Lower price = higher score (inverted normalization)
-        return 1.0 - (double)((vehicle.Price - minPrice) / (maxPrice - minPrice));
+        return 1.0 - (double)((price - minPrice.Value) / (maxPrice.Value - minPrice.Value));
     }
 
     /// <summary>
-    /// Computes vehicle condition score.
+    /// Computes vehicle condition score based on multiple factors.
+    /// 
+    /// Scoring breakdown (max 1.0 total):
+    /// - Service History Present: +0.3
+    /// - Low Mileage (&lt;50k): +0.2, (&lt;80k): +0.1
+    /// - MOT Validity (&gt;90 days): +0.2, (&gt;30 days): +0.1
+    /// - Service Count (≥5): +0.2, (≥3): +0.1
+    /// - No Damage Declarations: +0.1
+    /// 
+    /// Note: Components are additive and can exceed 1.0, but final score is clamped.
     /// </summary>
     private double ComputeConditionScore(Vehicle vehicle)
     {

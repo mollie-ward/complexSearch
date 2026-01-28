@@ -34,9 +34,9 @@ public interface IResultRankingService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Computes a business-adjusted score for a vehicle.
+    /// Computes a business-adjusted score for a vehicle result.
     /// </summary>
-    /// <param name="vehicle">The vehicle to score.</param>
+    /// <param name="result">The vehicle result to score.</param>
     /// <param name="query">The composed query for context.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The business score (0-1).</returns>

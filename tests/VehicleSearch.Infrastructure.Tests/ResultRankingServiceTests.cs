@@ -152,9 +152,11 @@ public class ResultRankingServiceTests
         var bmw = rankedResults.First(r => r.Vehicle.Make == "BMW");
         var toyota = rankedResults.First(r => r.Vehicle.Make == "Toyota");
         
-        // BMW gets +0.1 (premium) -0.15 (high mileage) = -0.05 net
-        // Toyota gets no adjustments
-        // So Toyota should rank higher despite same initial score
+        // BMW has high mileage which gets penalized (-0.15)
+        // BMW also gets premium boost (+0.05)
+        // Net effect for BMW: -0.10 adjustment
+        // Toyota gets no adjustments (stays at base score)
+        // Therefore Toyota should rank higher
         Assert.True(toyota.Score > bmw.Score);
     }
 
@@ -264,7 +266,7 @@ public class ResultRankingServiceTests
     }
 
     [Fact]
-    public async Task RerankResultsAsync_WithEmptyResults_ReturnsEmptyList()
+    public async Task RankResultsAsync_WithEmptyResults_ReturnsEmptyList()
     {
         // Arrange
         var results = new List<VehicleResult>();
@@ -287,6 +289,53 @@ public class ResultRankingServiceTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => _service.RerankResultsAsync(results, null!, query));
+    }
+
+    [Fact]
+    public async Task RerankResultsAsync_WithInvalidMaxPerMake_ThrowsArgumentException()
+    {
+        // Arrange
+        var results = CreateTestResults();
+        var query = CreateTestQuery();
+        var strategy = new RerankingStrategy
+        {
+            Approach = RerankingApproach.WeightedScore,
+            FactorWeights = new Dictionary<RankingFactor, double>
+            {
+                [RankingFactor.SemanticRelevance] = 1.0
+            },
+            BusinessRules = new List<BusinessRule>(),
+            ApplyDiversity = true,
+            MaxPerMake = 0 // Invalid
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.RerankResultsAsync(results, strategy, query));
+    }
+
+    [Fact]
+    public async Task RerankResultsAsync_WithInvalidMaxPerModel_ThrowsArgumentException()
+    {
+        // Arrange
+        var results = CreateTestResults();
+        var query = CreateTestQuery();
+        var strategy = new RerankingStrategy
+        {
+            Approach = RerankingApproach.WeightedScore,
+            FactorWeights = new Dictionary<RankingFactor, double>
+            {
+                [RankingFactor.SemanticRelevance] = 1.0
+            },
+            BusinessRules = new List<BusinessRule>(),
+            ApplyDiversity = true,
+            MaxPerMake = 3,
+            MaxPerModel = -1 // Invalid
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.RerankResultsAsync(results, strategy, query));
     }
 
     [Fact]
